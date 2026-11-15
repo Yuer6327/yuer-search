@@ -35,6 +35,10 @@ export async function probeGoogle(timeoutMs = 2500): Promise<boolean> {
 }
 
 function postProcess(container: HTMLElement): void {
+  // 剔除 CSE 免费版的广告位（0 广告承诺；免费 embed 无法在控制台关闭广告）
+  container
+    .querySelectorAll('.gsc-adBlock, .gsc-adBlockHeight, .gsc-thinInlineAd, .gs-ad')
+    .forEach((el) => el.remove())
   container.querySelectorAll('a').forEach((a) => {
     a.removeAttribute('data-cturl')
     a.removeAttribute('data-ctorig')
