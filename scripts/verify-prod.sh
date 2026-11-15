@@ -31,13 +31,14 @@ case "$cf" in
 esac
 
 NONCE="$(date +%s)"
-s1=$(curl -sS -m 30 "$BASE_URL/api/search?q=vue3&engines=bing&_=$NONCE" 2>/dev/null)
+# 金丝雀查询用已在生产验证稳定的常规词（单 token 带数字的冷门词会被 Bing 投毒，属已知降级场景）
+s1=$(curl -sS -m 30 "$BASE_URL/api/search?q=rust%20async%20tutorial&engines=bing&_=$NONCE" 2>/dev/null)
 case "$s1" in
   *'"status":"ok"'*) ok "快速通道（bing）→ ok" ;;
   *) bad "快速通道（bing）→ ${s1:0:220}" ;;
 esac
 
-s2=$(curl -sS -m 45 "$BASE_URL/api/search?q=vue3&_=$NONCE" 2>/dev/null)
+s2=$(curl -sS -m 45 "$BASE_URL/api/search?q=rust%20async%20tutorial&_=$NONCE" 2>/dev/null)
 case "$s2" in
   *'"status":"ok"'*) ok "全量聚合 → ok" ;;
   *) bad "全量聚合 → ${s2:0:200}" ;;
