@@ -168,6 +168,7 @@ def api_search(
     q: str = Query(..., min_length=1, max_length=200),
     page: int = Query(1, ge=1, le=10),
     engines: str | None = Query(None),
+    pushdown: int | None = Query(None, ge=0, le=25),
 ) -> JSONResponse:
     started = time.perf_counter()
     query = q.strip()
@@ -176,7 +177,10 @@ def api_search(
 
     lang = detect_lang(query)
     block_all = [d for d in BASELINE.get("domains", {}).get("block", []) if isinstance(d, str)]
-    max_sites = int(BASELINE.get("pushdown", {}).get("max_sites", 12))
+    # pushdown 数量可被请求参数覆盖（运维诊断用：0 = 不下推）
+    max_sites = int(pushdown) if pushdown is not None else int(
+        BASELINE.get("pushdown", {}).get("max_sites", 12)
+    )
     requested = _resolve_engines(engines)
     engine_results = _run_engines(
         requested, query=query, lang=lang, page=page, block=block_all[:max_sites]
