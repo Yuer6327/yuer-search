@@ -58,18 +58,21 @@ def get_zone() -> str:
     return _zone_cache or "serp"
 
 
-def fetch_raw(query: str, *, lang: str = "zh", page: int = 1, timeout: float = 15.0) -> dict:
-    """诊断转储：/api/debug/raw?engine=brightdata。"""
+def fetch_raw(query: str, *, lang: str = "zh", page: int = 1, timeout: float = 15.0, target: str = "baidu") -> dict:
+    """诊断转储：/api/debug/raw?engine=brightdata&target=google|baidu。"""
     token = os.environ.get(_TOKEN_ENV, "").strip()
     zone = get_zone()
-    target = f"https://www.baidu.com/s?wd={quote(query)}&rn=10&pn={(page - 1) * 10}"
+    if target == "google":
+        target_url = f"https://www.google.com/search?q={quote(query)}&hl=zh-cn&gl=cn"
+    else:
+        target_url = f"https://www.baidu.com/s?wd={quote(query)}&rn=10&pn={(page - 1) * 10}"
     resp = http_post_json(
         _ENDPOINT,
-        {"zone": zone, "url": target, "format": "json", "data_format": "parsed_light"},
+        {"zone": zone, "url": target_url, "format": "json", "data_format": "parsed_light"},
         headers={"Authorization": f"Bearer {token}"},
         timeout=timeout,
     )
-    return {"http_status": resp.status_code, "url": target, "body_head": resp.text[:3000], "body_full": resp.text}
+    return {"http_status": resp.status_code, "url": target_url, "body_head": resp.text[:3000], "body_full": resp.text}
 
 
 def _extract_list(data: dict) -> list[dict]:
