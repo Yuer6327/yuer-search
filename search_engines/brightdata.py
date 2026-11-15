@@ -1,53 +1,45 @@
-"""Bright Data SERP 引擎：经 Bright Data 代理端点取百度 SERP（免费层 5000 credits/月、官方支持百度）。
+"""Bright Data SERP 引擎（新 API 模式）：POST api.brightdata.com/request 取百度 SERP JSON。
 
-用法：Bright Data 控制台建一个 **SERP 类型** 的代理 Zone，把
-`BRIGHTDATA_PROXY_USER`（形如 brd-customer-hl_xxxxx-zone-serp_cn）与
-`BRIGHTDATA_PROXY_PASSWORD` 两个环境变量配上即可自动启用。
-
-请求路径：代理 GET https://www.baidu.com/s?wd=...（SERP Zone 会返回解析后的 JSON）。
-响应结构以实测为准：优先解析 organic/results 列表；若返回 HTML（Zone 类型不对）则降级并留样本。
+免费层 5000 credits/月、官方支持百度、无需绑卡。配置两个环境变量：
+- BRIGHTDATA_API_TOKEN：控制台 Settings → API token（账户级）
+- BRIGHTDATA_ZONE：（可选）Zone 名，默认 "serp"——由 SERP API 产品页激活时自动创建
+旧的代理凭据模式（BRIGHTDATA_PROXY_USER/PASSWORD）已废弃。
 """
 from __future__ import annotations
 
 import os
 import time
+from urllib.parse import quote
 
-from .http import http_get
+from .http import http_post_json
 from .util import EngineError, domain_of, host_matches, overlap_any, relevance_tokens
 
-_PROXY_HOST = "http://brd.superproxy.io:22225"
+_ENDPOINT = "https://api.brightdata.com/request"
+_TOKEN_ENV = "BRIGHTDATA_API_TOKEN"
+_ZONE_ENV = "BRIGHTDATA_ZONE"
 _MAX_RESULTS = 10
-_PROXY_USER_ENV = "BRIGHTDATA_PROXY_USER"
-_PROXY_PASS_ENV = "BRIGHTDATA_PROXY_PASSWORD"
 
 
 def has_key() -> bool:
-    return bool(os.environ.get(_PROXY_USER_ENV, "").strip() and os.environ.get(_PROXY_PASS_ENV, "").strip())
+    return bool(os.environ.get(_TOKEN_ENV, "").strip())
 
 
-def fetch_raw(query: str, *, lang: str = "zh", page: int = 1, timeout: float = 10.0) -> dict:
+def fetch_raw(query: str, *, lang: str = "zh", page: int = 1, timeout: float = 15.0) -> dict:
     """诊断转储：/api/debug/raw?engine=brightdata。"""
-    creds = _creds()
-    proxies = {"http": f"{creds}", "https": f"{creds}"}
-    resp = http_get(
-        "https://www.baidu.com/s",
-        params={"wd": query, "rn": "10", "pn": str((page - 1) * 10)},
+    token = os.environ.get(_TOKEN_ENV, "").strip()
+    zone = os.environ.get(_ZONE_ENV, "").strip() or "serp"
+    target = f"https://www.baidu.com/s?wd={quote(query)}&rn=10&pn={(page - 1) * 10}"
+    resp = http_post_json(
+        _ENDPOINT,
+        {"zone": zone, "url": target, "format": "json"},
+        headers={"Authorization": f"Bearer {token}"},
         timeout=timeout,
-        proxies=proxies,
     )
-    return {"http_status": resp.status_code, "url": str(resp.url), "body_head": resp.text[:3000], "body_full": resp.text}
-
-
-def _creds() -> str:
-    import urllib.parse
-
-    user = urllib.parse.quote(os.environ.get(_PROXY_USER_ENV, "").strip(), safe="")
-    pwd = urllib.parse.quote(os.environ.get(_PROXY_PASS_ENV, "").strip(), safe="")
-    return f"{user}:{pwd}@brd.superproxy.io:22225"
+    return {"http_status": resp.status_code, "url": target, "body_head": resp.text[:3000], "body_full": resp.text}
 
 
 def _extract_list(data: dict) -> list[dict]:
-    for key in ("organic", "results", "organic_results", "items"):
+    for key in ("organic", "results", "organic_results", "items", "result"):
         v = data.get(key)
         if isinstance(v, list) and v:
             return [r for r in v if isinstance(r, dict)]
@@ -60,30 +52,33 @@ def search(
     lang: str = "en",
     page: int = 1,
     baseline_block: list[str] | None = None,
-    timeout: float = 10.0,
+    timeout: float = 15.0,
     deadline: float | None = None,  # 契约统一；单请求引擎不使用
 ) -> dict:
     started = time.perf_counter()
     if lang != "zh":
         return {"name": "brightdata", "status": "skipped", "latency_ms": 0, "results": [], "note": "百度源，英文查询自动跳过"}
-    if not has_key():
+    token = os.environ.get(_TOKEN_ENV, "").strip()
+    if not token:
         return {
             "name": "brightdata",
             "status": "skipped",
             "latency_ms": 0,
             "results": [],
-            "note": "未配置 BRIGHTDATA_PROXY_USER/BRIGHTDATA_PROXY_PASSWORD（SERP Zone 凭据）",
+            "note": "未配置 BRIGHTDATA_API_TOKEN（控制台 Settings 生成；SERP API 免费层 5000/月）",
         }
+    zone = os.environ.get(_ZONE_ENV, "").strip() or "serp"
 
     blocked = baseline_block or []
-    creds = _creds()
-    proxies = {"http": f"http://{creds}", "https": f"http://{creds}"}
-    resp = http_get(
-        "https://www.baidu.com/s",
-        params={"wd": query, "rn": "10", "pn": str((page - 1) * 10)},
+    target = f"https://www.baidu.com/s?wd={quote(query)}&rn=10&pn={(page - 1) * 10}"
+    resp = http_post_json(
+        _ENDPOINT,
+        {"zone": zone, "url": target, "format": "json"},
+        headers={"Authorization": f"Bearer {token}"},
         timeout=timeout,
-        proxies=proxies,
     )
+    if resp.status_code == 401 or resp.status_code == 403:
+        raise EngineError(f"HTTP {resp.status_code}（API token 无效）")
     if resp.status_code != 200:
         raise EngineError(f"HTTP {resp.status_code}")
 
@@ -97,13 +92,12 @@ def search(
         except Exception:
             data = None
     if not isinstance(data, dict):
-        # Zone 类型不对（返回了 HTML 而非 SERP JSON）——降级并留样本供诊断
         return {
             "name": "brightdata",
             "status": "degraded",
             "latency_ms": int((time.perf_counter() - started) * 1000),
             "results": [],
-            "note": "响应非 SERP JSON：请确认 Bright Data Zone 类型为 SERP",
+            "note": "响应非 SERP JSON（zone 配置或格式参数问题）",
             "discarded_sample": [text[:120]],
         }
 

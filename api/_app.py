@@ -47,7 +47,7 @@ _ENV_GATES = {
     "firecrawl": ("FIRECRAWL_API_KEY",),
     "scraperapi": ("SCRAPERAPI_KEY",),
     "hasdata": ("HASDATA_KEY",),
-    "brightdata": ("BRIGHTDATA_PROXY_USER", "BRIGHTDATA_PROXY_PASSWORD"),
+    "brightdata": ("BRIGHTDATA_API_TOKEN",),
 }
 
 _HTTP_TIMEOUT = 6.0
