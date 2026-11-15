@@ -105,9 +105,10 @@ def search(
             break
         try:
             resp = http_get(endpoint, params=params, timeout=timeout)
-            # DDG 风控会返回假 "202 Accepted"，按非 200 处理
+            # DDG 风控会返回假 "202 Accepted"（对数据中心 IP 的软封锁，已知行为），按非 200 处理
             if resp.status_code != 200:
-                last_note = f"HTTP {resp.status_code}（可能被风控）"
+                soft = resp.status_code in (202, 403, 429)
+                last_note = f"HTTP {resp.status_code}（DDG 对云 IP 的{'软封锁，已知行为' if soft else '风控'}）"
                 continue
             items = _parse(resp.text, blocked)
             if items:

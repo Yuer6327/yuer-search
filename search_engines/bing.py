@@ -50,7 +50,18 @@ def _tokenize(query: str) -> set[str]:
 
 
 def _parse(html: str, blocked: list[str]) -> list[dict]:
-    soup = BeautifulSoup(html, "lxml")
+    return _parse_soup(BeautifulSoup(html, "lxml"), blocked)
+
+
+def _no_results_banner(soup: BeautifulSoup) -> bool:
+    """识别 Bing 的显式"无结果"横幅——这是诚实的空结果，不是静默垃圾。"""
+    if soup.select_one("#b_noResults"):
+        return True
+    head = soup.get_text(" ", strip=True)[:4000].lower()
+    return any(m in head for m in ("there are no results for", "没有找到", "未找到"))
+
+
+def _parse_soup(soup: BeautifulSoup, blocked: list[str]) -> list[dict]:
     items: list[dict] = []
     seen: set[str] = set()
     for li in soup.select("#b_results li.b_algo"):
@@ -109,7 +120,17 @@ def search(
     if "captcha" in lower_head or "verify" in lower_head:
         raise EngineError("触发验证码/风控页")
 
-    items = _parse(resp.text, blocked)
+    soup = BeautifulSoup(resp.text, "lxml")
+    if _no_results_banner(soup):
+        return {
+            "name": "bing",
+            "status": "ok",
+            "latency_ms": int((time.perf_counter() - started) * 1000),
+            "results": [],
+            "note": "无结果（Bing 显式空结果页）",
+        }
+
+    items = _parse_soup(soup, blocked)
 
     # 相关性护栏：全部结果与查询零词元重叠 → 丢弃（Bing 静默垃圾响应特征）
     tokens = _tokenize(query)
