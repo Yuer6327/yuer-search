@@ -68,6 +68,9 @@ _HTTP_TIMEOUT = 6.0
 _TOTAL_TIMEOUT = 9.0
 _CACHE_CONTROL = "public, s-maxage=1800, stale-while-revalidate=86400"
 
+# mode 参数到引擎子集的映射（engines 参数的快捷方式；显式 engines 优先于 mode）
+_MODE_ENGINES: dict[str, list[str]] = {"bing": ["bing"]}
+
 _FALLBACK_BASELINE: dict = {
     "engines": {"ddg": {"enabled": True}, "bing": {"enabled": True}, "marginalia": {"enabled": True}},
     "pushdown": {"max_sites": 12},
@@ -330,6 +333,7 @@ def api_search(
     q: str = Query(..., min_length=1, max_length=200),
     page: int = Query(1, ge=1, le=10),
     engines: str | None = Query(None),
+    mode: str | None = Query(None),
     pushdown: int | None = Query(None, ge=0, le=25),
     lang: str | None = Query(None),
 ) -> JSONResponse:
@@ -345,7 +349,9 @@ def api_search(
     max_sites = int(pushdown) if pushdown is not None else int(
         BASELINE.get("pushdown", {}).get("max_sites", 12)
     )
-    requested = _resolve_engines(engines)
+    # mode=bing 是 engines=bing 的快捷方式；显式 engines 参数优先
+    engines_param = engines if engines else ",".join(_MODE_ENGINES.get(mode or "", []))
+    requested = _resolve_engines(engines_param)
     engine_results = _run_engines(
         requested, query=query, lang=lang, page=page, block=block_all[:max_sites]
     )

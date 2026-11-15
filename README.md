@@ -21,6 +21,9 @@
   │    → 归一化 per-engine JSON，边缘缓存 s-maxage=1800 + SWR 24h
   │    → 前端融合排序：引擎权重 × 域名调整 × 位置衰减，URL 去重，多源验证标记
   │
+  ├─ Bing 单引擎模式（`/search?q=…&mode=bing`，API 等价 `engines=bing`）
+  │    只请求 Bing（最稳最快的中文主力源），不聚合其他引擎；浏览器搜索关键词推荐用这个
+  │
   └─ Google 模式（能直连 Google 的用户）
        CSE embed 控件（免费、无每日额度限制，不在 JSON API 停服范围）
        进入前探活 cse.google.com，不可达自动提示切回聚合模式

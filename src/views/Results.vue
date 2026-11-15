@@ -15,7 +15,10 @@ const route = useRoute()
 const router = useRouter()
 
 const q = computed(() => String(route.query.q ?? '').trim())
-const mode = computed<'agg' | 'google'>(() => (route.query.mode === 'google' ? 'google' : 'agg'))
+// mode=bing：纯 Bing 单引擎（浏览器搜索关键词用，跳过聚合）；默认聚合
+const mode = computed<'agg' | 'google' | 'bing'>(() =>
+  route.query.mode === 'google' ? 'google' : route.query.mode === 'bing' ? 'bing' : 'agg',
+)
 
 /**
  * 两段式渐进加载：
@@ -57,6 +60,7 @@ const ENGINE_ORDER = [
 ]
 
 function splitEngines(): { fast: string[]; rest: string[] } {
+  if (mode.value === 'bing') return { fast: ['bing'], rest: [] } // 显式 mode=bing：无视偏好强制单引擎
   const enabled = ENGINE_ORDER.filter(
     (name) => engineOn(name) && uiState.engineAvailability[name]?.available === true,
   )
@@ -76,7 +80,7 @@ const hasMore = computed(() =>
 )
 
 async function search(fresh = false): Promise<void> {
-  if (!q.value || mode.value !== 'agg') return
+  if (!q.value || mode.value === 'google') return
   const mySeq = ++seq
   loading.value = true
   error.value = ''
@@ -134,7 +138,7 @@ function applyRest(): void {
   showRerankHint.value = false
 }
 
-function setMode(m: 'agg' | 'google'): void {
+function setMode(m: 'agg' | 'google' | 'bing'): void {
   router.push({ query: { ...route.query, mode: m } })
 }
 
@@ -155,7 +159,7 @@ async function ensureGoogle(): Promise<void> {
 watch(
   [q, page],
   () => {
-    if (mode.value === 'agg') void search()
+    if (mode.value !== 'google') void search()
   },
   { immediate: true },
 )
@@ -187,6 +191,7 @@ function refresh(fresh = false): void {
       <div class="topbar-actions">
         <div class="mode-switch" aria-label="搜索模式">
           <button :class="{ on: mode === 'agg' }" :aria-pressed="mode === 'agg'" @click="setMode('agg')">聚合</button>
+          <button :class="{ on: mode === 'bing' }" :aria-pressed="mode === 'bing'" @click="setMode('bing')">Bing</button>
           <button v-if="uiState.googleCx" :class="{ on: mode === 'google' }" :aria-pressed="mode === 'google'" @click="setMode('google')">
             Google
           </button>
