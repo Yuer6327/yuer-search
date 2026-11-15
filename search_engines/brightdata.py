@@ -66,17 +66,21 @@ def fetch_raw(
     timeout: float = 15.0,
     target: str = "baidu",
     data_format: str | None = None,
+    fmt: str = "json",
+    country: str | None = None,
 ) -> dict:
-    """诊断转储：/api/debug/raw?engine=brightdata&target=google|baidu&df=parsed_light|none。"""
+    """诊断转储：/api/debug/raw?engine=brightdata&target=google|baidu&df=none&fmt=raw&country=cn。"""
     token = os.environ.get(_TOKEN_ENV, "").strip()
     zone = get_zone()
     if target == "google":
         target_url = f"https://www.google.com/search?q={quote(query)}&hl=zh-cn&gl=cn"
     else:
         target_url = f"https://www.baidu.com/s?wd={quote(query)}&rn=10&pn={(page - 1) * 10}"
-    payload: dict = {"zone": zone, "url": target_url, "format": "json"}
+    payload: dict = {"zone": zone, "url": target_url, "format": fmt}
     if data_format:
         payload["data_format"] = data_format
+    if country:
+        payload["country"] = country
     resp = http_post_json(
         _ENDPOINT,
         payload,
