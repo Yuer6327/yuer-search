@@ -27,3 +27,6 @@ Thumbs.db
 
 # ZCode 工作区产物
 .zcode/
+
+.vercel
+.env*

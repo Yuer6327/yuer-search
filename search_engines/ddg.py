@@ -13,7 +13,7 @@ from urllib.parse import parse_qs, urlparse
 
 from bs4 import BeautifulSoup
 
-from .http import http_get
+from .http import http_session
 from .util import EngineError, apply_pushdown, domain_of, host_matches
 
 _ENDPOINTS = ("https://lite.duckduckgo.com/lite/", "https://html.duckduckgo.com/html/")
@@ -98,13 +98,25 @@ def search(
     if page > 1:
         params["s"] = str((page - 1) * 20)
 
+    # 预热会话拿 Cookie：DDG 对无 Cookie 的数据中心 IP 直接回假 202 软封锁
+    session = http_session()
+    try:
+        session.get("https://duckduckgo.com/", timeout=4.0)
+    except Exception:
+        pass  # 预热失败不阻塞主流程
+
     last_note = "无结果"
     for endpoint in _ENDPOINTS:
         # 编排层总超时前预留 2s 余量；第二端点来不及就不试（避免响应被拖过上限）
         if deadline is not None and time.perf_counter() > deadline - 2.0:
             break
         try:
-            resp = http_get(endpoint, params=params, timeout=timeout)
+            resp = session.get(
+                endpoint,
+                params=params,
+                timeout=timeout,
+                headers={"Referer": "https://duckduckgo.com/"},
+            )
             # DDG 风控会返回假 "202 Accepted"（对数据中心 IP 的软封锁，已知行为），按非 200 处理
             if resp.status_code != 200:
                 soft = resp.status_code in (202, 403, 429)

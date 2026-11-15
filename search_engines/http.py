@@ -44,7 +44,11 @@ CHROME_HEADERS = {
 def http_session():
     """带 Cookie 的会话（预热的 Chrome 指纹）：搜索引擎的反爬普遍依赖 Cookie 存在性。"""
     if HAS_CURL_CFFI:
-        return _impl.Session(impersonate="chrome")
+        kwargs: dict = {"impersonate": "chrome"}
+        v = _safe_verify()
+        if v:
+            kwargs["verify"] = v
+        return _impl.Session(**kwargs)
     return _impl.Session()  # type: ignore[return-value]
 
 _VERIFY_PATH: str | None = None
