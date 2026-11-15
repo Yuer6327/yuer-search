@@ -16,7 +16,7 @@ from urllib.parse import parse_qs, urlparse
 
 from bs4 import BeautifulSoup
 
-from .http import http_get
+from .http import http_session
 from .util import EngineError, apply_pushdown, domain_of, host_matches
 
 _MAX_RESULTS = 15
@@ -117,8 +117,26 @@ def search(
     }
     if page > 1:
         params["first"] = str((page - 1) * 15 + 1)
+    params["form"] = "QBLH"  # 模拟真实浏览器从搜索框提交
 
-    resp = http_get("https://www.bing.com/search", params=params, timeout=timeout)
+    # 预热会话拿 Cookie（MUID 等）：数据中心 IP 缺 Cookie 时 Bing 会投毒返回随机无关结果
+    search_headers = {"Referer": "https://www.bing.com/"}
+    try:
+        session = http_session()
+        session.get("https://www.bing.com/", timeout=4.0)
+        resp = session.get(
+            "https://www.bing.com/search",
+            params=params,
+            headers=search_headers,
+            timeout=timeout,
+        )
+    except EngineError:
+        raise
+    except Exception:
+        # 预热失败则退回一次性请求
+        from .http import http_get
+
+        resp = http_get("https://www.bing.com/search", params=params, timeout=timeout)
     if resp.status_code != 200:
         raise EngineError(f"HTTP {resp.status_code}")
     lower_head = resp.text[:4000].lower()

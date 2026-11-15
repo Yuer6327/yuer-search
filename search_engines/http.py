@@ -33,8 +33,19 @@ CHROME_HEADERS = {
     "Sec-Fetch-Dest": "document",
     "Sec-Fetch-Mode": "navigate",
     "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
     "Upgrade-Insecure-Requests": "1",
+    "sec-ch-ua": '"Chromium";v="133", "Not(A:Brand";v="24", "Google Chrome";v="133"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"Windows"',
 }
+
+
+def http_session():
+    """带 Cookie 的会话（预热的 Chrome 指纹）：搜索引擎的反爬普遍依赖 Cookie 存在性。"""
+    if HAS_CURL_CFFI:
+        return _impl.Session(impersonate="chrome")
+    return _impl.Session()  # type: ignore[return-value]
 
 _VERIFY_PATH: str | None = None
 
