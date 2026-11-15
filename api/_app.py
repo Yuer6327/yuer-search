@@ -215,7 +215,7 @@ def debug_raw(engine: str = Query(...), q: str = Query("test", max_length=100)) 
     if not hasattr(mod, "fetch_raw"):
         return JSONResponse({"error": "module missing fetch_raw"}, headers={"Cache-Control": "no-store"})
     try:
-        raw = mod.fetch_raw(q.strip(), lang="zh" if engine == "brightdata" else "en", page=1, timeout=10.0)
+        raw = mod.fetch_raw(q.strip(), lang="zh" if engine == "brightdata" else "en", page=1, timeout=35.0)
     except Exception as exc:
         return JSONResponse({"fetch_error": f"{type(exc).__name__}: {str(exc)[:200]}"}, headers={"Cache-Control": "no-store"})
     parsed = None
