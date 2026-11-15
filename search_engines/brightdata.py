@@ -24,10 +24,44 @@ def has_key() -> bool:
     return bool(os.environ.get(_TOKEN_ENV, "").strip())
 
 
+_zone_cache: str | None = None
+
+
+def get_zone() -> str:
+    """Zone 解析顺序：环境变量 → API 自动发现（get_active_zones，优先含 serp 的）→ 默认 serp。"""
+    global _zone_cache
+    env = os.environ.get(_ZONE_ENV, "").strip()
+    if env:
+        return env
+    if _zone_cache:
+        return _zone_cache
+    token = os.environ.get(_TOKEN_ENV, "").strip()
+    if not token:
+        return "serp"
+    try:
+        from .http import http_get
+
+        r = http_get(
+            "https://api.brightdata.com/zone/get_active_zones",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=8.0,
+        )
+        if r.status_code == 200:
+            zones = r.json()
+            if isinstance(zones, list) and zones:
+                names = [z if isinstance(z, str) else str(z.get("name") or z.get("zone") or "") for z in zones]
+                names = [n for n in names if n]
+                preferred = [n for n in names if "serp" in n.lower()]
+                _zone_cache = (preferred or names)[0]
+    except Exception:
+        pass
+    return _zone_cache or "serp"
+
+
 def fetch_raw(query: str, *, lang: str = "zh", page: int = 1, timeout: float = 15.0) -> dict:
     """诊断转储：/api/debug/raw?engine=brightdata。"""
     token = os.environ.get(_TOKEN_ENV, "").strip()
-    zone = os.environ.get(_ZONE_ENV, "").strip() or "serp"
+    zone = get_zone()
     target = f"https://www.baidu.com/s?wd={quote(query)}&rn=10&pn={(page - 1) * 10}"
     resp = http_post_json(
         _ENDPOINT,
@@ -67,7 +101,7 @@ def search(
             "results": [],
             "note": "未配置 BRIGHTDATA_API_TOKEN（控制台 Settings 生成；SERP API 免费层 5000/月）",
         }
-    zone = os.environ.get(_ZONE_ENV, "").strip() or "serp"
+    zone = get_zone()
 
     blocked = baseline_block or []
     target = f"https://www.baidu.com/s?wd={quote(query)}&rn=10&pn={(page - 1) * 10}"
@@ -106,7 +140,7 @@ def search(
     items: list[dict] = []
     seen: set[str] = set()
     for r in rows:
-        url = r.get("url") or ""
+        url = r.get("url") or r.get("link") or ""  # parsed_light 形态用 link 字段
         if not url.startswith("http") or url in seen:
             continue
         domain = domain_of(url)
