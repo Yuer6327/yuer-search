@@ -150,6 +150,7 @@ def search(
                 "latency_ms": int((time.perf_counter() - started) * 1000),
                 "results": [],
                 "note": "相关性校验未通过：疑似 Bing 返回无关结果，已丢弃",
+                "discarded_sample": [i["title"][:80] for i in items[:3]],
             }
 
     return {

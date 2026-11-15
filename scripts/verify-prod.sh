@@ -30,13 +30,14 @@ case "$cf" in
   *) bad "/api/config → ${cf:0:160}" ;;
 esac
 
-s1=$(curl -sS -m 30 "$BASE_URL/api/search?q=vue3&engines=bing" 2>/dev/null)
+NONCE="$(date +%s)"
+s1=$(curl -sS -m 30 "$BASE_URL/api/search?q=vue3&engines=bing&_=$NONCE" 2>/dev/null)
 case "$s1" in
   *'"status":"ok"'*) ok "快速通道（bing）→ ok" ;;
-  *) bad "快速通道（bing）→ ${s1:0:200}" ;;
+  *) bad "快速通道（bing）→ ${s1:0:220}" ;;
 esac
 
-s2=$(curl -sS -m 45 "$BASE_URL/api/search?q=vue3" 2>/dev/null)
+s2=$(curl -sS -m 45 "$BASE_URL/api/search?q=vue3&_=$NONCE" 2>/dev/null)
 case "$s2" in
   *'"status":"ok"'*) ok "全量聚合 → ok" ;;
   *) bad "全量聚合 → ${s2:0:200}" ;;
