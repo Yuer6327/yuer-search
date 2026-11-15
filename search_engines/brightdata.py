@@ -65,7 +65,7 @@ def fetch_raw(query: str, *, lang: str = "zh", page: int = 1, timeout: float = 1
     target = f"https://www.baidu.com/s?wd={quote(query)}&rn=10&pn={(page - 1) * 10}"
     resp = http_post_json(
         _ENDPOINT,
-        {"zone": zone, "url": target, "format": "json"},
+        {"zone": zone, "url": target, "format": "json", "data_format": "parsed_light"},
         headers={"Authorization": f"Bearer {token}"},
         timeout=timeout,
     )
@@ -107,7 +107,7 @@ def search(
     target = f"https://www.baidu.com/s?wd={quote(query)}&rn=10&pn={(page - 1) * 10}"
     resp = http_post_json(
         _ENDPOINT,
-        {"zone": zone, "url": target, "format": "json"},
+        {"zone": zone, "url": target, "format": "json", "data_format": "parsed_light"},
         headers={"Authorization": f"Bearer {token}"},
         timeout=timeout,
     )
