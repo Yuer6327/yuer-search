@@ -1,0 +1,52 @@
+# Yuer Search — Google CSE 精选站点池（2026-11-15）
+#
+# 背景：Google 已对新引擎弃用「Search the entire web」（JSON API 2027-01-01 停服的同一产品线收缩），
+#       新建引擎只能走站点白名单（上限 50 个 distinct domains，本表 ~40 个，留有余量）。
+# 用法：PSE 控制台 → Setup → Sites to search（或你看到的 Add sites to include 文本框）→ 每行一条粘贴。
+# 语义：*.example.com = 整个域名含子域名；xxx.com/* = 该主机全部路径。超过 50 个需删减后再加。
+#
+# —— 开发通用 ——
+*.github.com
+*.stackoverflow.com
+*.stackexchange.com
+*.superuser.com
+*.serverfault.com
+developer.mozilla.org/*
+*.wikipedia.org
+*.arxiv.org
+*.reddit.com
+*.python.org
+*.npmjs.com
+*.pypi.org
+*.pydata.org
+*.docker.com
+*.kubernetes.io
+# —— 语言 / 框架 ——
+*.rust-lang.org
+*.go.dev
+*.nodejs.org
+*.vuejs.org
+*.react.dev
+*.vitejs.dev
+*.tailwindcss.com
+*.jetbrains.com
+*.chromium.org
+*.webkit.org
+*.postgresql.org
+*.redis.io
+*.nginx.org
+# —— 云 / 官方文档 ——
+learn.microsoft.com/*
+docs.aws.amazon.com/*
+developers.cloudflare.com/*
+*.vercel.com
+# —— 中文社区 ——
+*.juejin.cn
+*.cnblogs.com
+*.segmentfault.com
+*.v2ex.com
+*.linux.do
+*.zhihu.com
+*.sspai.com
+*.infoq.cn
+*.runoob.com

@@ -110,14 +110,23 @@ curl -sI "https://s.yuer6327.top/api/search?q=test" | grep -iE "cache-control|x-
 
 ## Google 模式配置
 
+> ⚠️ **2026-11 实测更新**：Google 已对新引擎弃用「Search the entire web」（控制台显示
+> "This feature is being deprecated and can no longer be enabled"，与 JSON API 停服同一产品线收缩）。
+> 因此 Google 模式的形态是「**精选站点池内的 Google 质量搜索**」（上限 50 个域名），而非全网搜索。
+
 1. 用你的 Google 账号在 [programmablesearchengine.google.com](https://programmablesearchengine.google.com) 免费创建搜索引擎：
-   - 「搜索整个网络」开启；不需要图片搜索；「在结果中显示广告」关闭。
-   - 记下引擎 ID（cx），设为 Vercel 环境变量 `VITE_GOOGLE_CSE_CX` 后重新部署。
-2. 基线屏蔽在 CSE 控制台「搜索功能 → 注释（Annotations）」里配置 `屏蔽` 规则
-   （可参照 `config/baseline.json` 的 block 列表逐条添加，或用控制台批量导入）。
-   —— 这是唯一需要你手工在 Google 控制台做的"全局基线"步骤。
-3. 行为说明：embed 控件免费且无每日额度限制（不在 2027 JSON API 停服范围）；前端探活
-   `cse.google.com`，大陆直连用户进入 Google 模式时会看到降级提示并一键切回聚合模式。
+   - 创建表单的 "Select sites or pages to search" 随便填一个占位（如 `www.google.com/*`），它不会生效；
+   - Image search 关闭、SafeSearch 保持开启。
+2. 创建后，在 **Sites to search**（Add sites to include 文本框）粘贴 [`config/cse-sites.txt`](config/cse-sites.txt)
+   的内容（每行一条，~40 个主流开发站点，留有余量；语义 `*.example.com` = 含子域名的整个域名）。
+3. 记下 **Search engine ID**（cx），设为 Vercel 环境变量 `VITE_GOOGLE_CSE_CX`（`VITE_` 前缀变量是构建期注入，
+   设置后必须 **Redeploy**），前端即出现 Google 模式入口。
+4. "Add sites to exclude" 在白名单模式下基本冗余（屏蔽只在包含站点内生效）——白名单本身就是最强的屏蔽。
+   `config/baseline.json` 的农场黑名单对聚合模式照常生效（-site: 下推 + 前端过滤）。
+5. 行为说明：embed 控件免费且无每日额度限制（不在 2027 JSON API 停服范围）；前端探活
+   `cse.google.com`，大陆直连用户进入 Google 模式时会看到降级提示并一键切回聚合模式；
+   免费版 embed 的广告位由前端剔除（`googleMode.ts` 的 postProcess）。
+   测试引擎本身可用公开 URL `https://cse.google.com/cse?cx=<你的cx>`（需能直连 Google）。
 
 ## 自定义
 
