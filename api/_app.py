@@ -169,13 +169,15 @@ def api_search(
     page: int = Query(1, ge=1, le=10),
     engines: str | None = Query(None),
     pushdown: int | None = Query(None, ge=0, le=25),
+    lang: str | None = Query(None),
 ) -> JSONResponse:
     started = time.perf_counter()
     query = q.strip()
     if not query:
         return JSONResponse({"error": "empty query"}, status_code=400, headers={"Cache-Control": "no-store"})
 
-    lang = detect_lang(query)
+    # lang 可被请求参数覆盖（auto|zh|en），默认按查询内容自动检测
+    lang = lang if lang in ("zh", "en") else detect_lang(query)
     block_all = [d for d in BASELINE.get("domains", {}).get("block", []) if isinstance(d, str)]
     # pushdown 数量可被请求参数覆盖（运维诊断用：0 = 不下推）
     max_sites = int(pushdown) if pushdown is not None else int(

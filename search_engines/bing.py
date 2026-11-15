@@ -121,59 +121,67 @@ def search(
 
     # 预热会话拿 Cookie（MUID 等）：数据中心 IP 缺 Cookie 时 Bing 会投毒返回随机无关结果
     search_headers = {"Referer": "https://www.bing.com/"}
+    session = http_session()
     try:
-        session = http_session()
         session.get("https://www.bing.com/", timeout=4.0)
-        resp = session.get(
-            "https://www.bing.com/search",
-            params=params,
-            headers=search_headers,
-            timeout=timeout,
-        )
-    except EngineError:
-        raise
     except Exception:
-        # 预热失败则退回一次性请求
-        from .http import http_get
+        pass  # 预热失败不阻塞主流程
 
-        resp = http_get("https://www.bing.com/search", params=params, timeout=timeout)
-    if resp.status_code != 200:
-        raise EngineError(f"HTTP {resp.status_code}")
-    lower_head = resp.text[:4000].lower()
-    if "captcha" in lower_head or "verify" in lower_head:
-        raise EngineError("触发验证码/风控页")
-
-    soup = BeautifulSoup(resp.text, "lxml")
-    if _no_results_banner(soup):
-        return {
-            "name": "bing",
-            "status": "ok",
-            "latency_ms": int((time.perf_counter() - started) * 1000),
-            "results": [],
-            "note": "无结果（Bing 显式空结果页）",
-        }
-
-    items = _parse_soup(soup, blocked)
-
-    # 相关性护栏：全部结果与查询零词元重叠 → 丢弃（Bing 静默垃圾响应特征）
     tokens = _tokenize(query)
-    if items and tokens:
-        has_overlap = any(
-            any(t in (r["title"] + " " + r["snippet"]).lower() for t in tokens) for r in items
-        )
-        if not has_overlap:
+    junk_sample: list[str] = []
+
+    # 双入口尝试：www.bing.com 被投毒时换 cn.bing.com 重试一次（护栏二次校验）
+    for host in ("https://www.bing.com", "https://cn.bing.com"):
+        try:
+            resp = session.get(
+                f"{host}/search",
+                params=params,
+                headers=search_headers,
+                timeout=timeout,
+            )
+        except Exception as exc:
+            raise EngineError(f"{type(exc).__name__}") from exc
+        if resp.status_code != 200:
+            junk_sample = []
+            continue
+        lower_head = resp.text[:4000].lower()
+        if "captcha" in lower_head or "verify" in lower_head:
+            continue
+
+        soup = BeautifulSoup(resp.text, "lxml")
+        if _no_results_banner(soup):
             return {
                 "name": "bing",
-                "status": "degraded",
+                "status": "ok",
                 "latency_ms": int((time.perf_counter() - started) * 1000),
                 "results": [],
-                "note": "相关性校验未通过：疑似 Bing 返回无关结果，已丢弃",
-                "discarded_sample": [i["title"][:80] for i in items[:3]],
+                "note": "无结果（Bing 显式空结果页）",
+            }
+
+        items = _parse_soup(soup, blocked)
+
+        # 相关性护栏：全部结果与查询零词元重叠 → 判定为投毒垃圾，换入口重试
+        if items and tokens:
+            has_overlap = any(
+                any(t in (r["title"] + " " + r["snippet"]).lower() for t in tokens) for r in items
+            )
+            if not has_overlap:
+                junk_sample = [i["title"][:80] for i in items[:3]]
+                continue  # 换下一个入口
+
+        if items:
+            return {
+                "name": "bing",
+                "status": "ok",
+                "latency_ms": int((time.perf_counter() - started) * 1000),
+                "results": items,
             }
 
     return {
         "name": "bing",
-        "status": "ok",
+        "status": "degraded",
         "latency_ms": int((time.perf_counter() - started) * 1000),
-        "results": items,
+        "results": [],
+        "note": "相关性校验未通过：Bing 对云 IP 投毒返回无关结果（已尝试 www 与 cn 双入口）",
+        "discarded_sample": junk_sample,
     }
