@@ -28,6 +28,15 @@ _ROOT = _HERE.parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+# 本地开发读取仓库根目录 .env；Vercel 由平台注入环境变量，不读取文件。
+if not os.environ.get("VERCEL"):
+    try:
+        from dotenv import load_dotenv
+    except ImportError:  # pragma: no cover
+        pass
+    else:
+        load_dotenv(_ROOT / ".env", override=False)
+
 from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
 
@@ -49,6 +58,11 @@ _ENV_GATES = {
     "hasdata": ("HASDATA_KEY",),
     "brightdata": ("BRIGHTDATA_API_TOKEN",),
 }
+_ENGINE_ORDER = (
+    "bing", "google", "ddg", "mojeek", "bilibili", "baidu", "marginalia",
+    "brave", "tavily", "serper", "brightdata", "exa", "firecrawl",
+    "scraperapi", "hasdata", "searxng",
+)
 
 _HTTP_TIMEOUT = 6.0
 _TOTAL_TIMEOUT = 9.0
@@ -88,26 +102,44 @@ def health() -> JSONResponse:
     )
 
 
-def _resolve_engines(engines_param: str | None) -> list[str]:
+def _google_cx() -> str:
+    return (
+        os.environ.get("GOOGLE_CSE_CX")
+        or os.environ.get("VITE_GOOGLE_CSE_CX")
+        or ""
+    ).strip()
+
+
+def _engine_availability() -> dict[str, dict[str, object]]:
+    """设置面板的唯一事实来源：服务端停用或缺配置的引擎不可在本端启用。"""
     conf = BASELINE.get("engines", {})
+    out: dict[str, dict[str, object]] = {}
+    for name in _ENGINE_ORDER:
+        enabled = bool(conf.get(name, {}).get("enabled", name != "brave"))
+        reason = ""
+        if not enabled:
+            reason = "服务端未启用"
+        elif name == "brave" and not _BRAVE_ENV_FLAG:
+            reason = "未启用 Brave"
+        elif name == "google" and not _google_cx():
+            reason = "未配置 GOOGLE_CSE_CX"
+        else:
+            missing = [k for k in _ENV_GATES.get(name, ()) if not os.environ.get(k, "").strip()]
+            if missing:
+                reason = f"未配置 {missing[0]}"
+        out[name] = {"available": not reason, **({"reason": reason} if reason else {})}
+    return out
+
+
+def _resolve_engines(engines_param: str | None) -> list[str]:
+    availability = _engine_availability()
     if engines_param:
         names = [e.strip().lower() for e in engines_param.split(",") if e.strip().lower() in REGISTRY]
     else:
-        names = [
-            name
-            for name in (
-                "bing", "google", "ddg", "mojeek", "bilibili", "baidu", "marginalia",
-                "brave", "tavily", "serper", "brightdata", "exa", "firecrawl", "scraperapi", "hasdata", "searxng",
-            )
-            if conf.get(name, {}).get("enabled", name != "brave")
-        ]
-    # 双重门禁引擎：基线 enabled + 环境变量齐备才默认启用
-    if "brave" in names and not (_BRAVE_ENV_FLAG and conf.get("brave", {}).get("enabled")):
-        names.remove("brave")
-    for name, env_keys in _ENV_GATES.items():
-        if name in names and not all(os.environ.get(k, "").strip() for k in env_keys):
-            names.remove(name)
-    return names
+        conf = BASELINE.get("engines", {})
+        names = [name for name in _ENGINE_ORDER if conf.get(name, {}).get("enabled", name != "brave")]
+    # 显式传入的子集也必须通过同一套服务端配置门禁
+    return [name for name in names if availability.get(name, {}).get("available")]
 
 
 def _run_engines(names: list[str], *, query: str, lang: str, page: int, block: list[str]) -> dict:
@@ -167,14 +199,13 @@ def _run_engines(names: list[str], *, query: str, lang: str, page: int, block: l
 def api_config() -> JSONResponse:
     """前端运行时配置。cx 是公开值（embed 页面源码可见），经服务端注入以兼容
     Vercel 环境变量名限制（不允许 VITE_ 前缀）；同时兼容旧构建期变量名。"""
-    cx = (
-        os.environ.get("GOOGLE_CSE_CX")
-        or os.environ.get("VITE_GOOGLE_CSE_CX")
-        or ""
-    ).strip()
     brave = os.environ.get("BRAVE_ENABLED", "").strip() == "1"
     return JSONResponse(
-        {"google_cse_cx": cx, "brave_enabled": brave},
+        {
+            "google_cse_cx": _google_cx(),
+            "brave_enabled": brave,
+            "engine_availability": _engine_availability(),
+        },
         headers={"Cache-Control": "public, s-maxage=300"},
     )
 

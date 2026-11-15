@@ -59,6 +59,8 @@ npm run dev          # http://localhost:5173
 .venv/Scripts/python tests/run_tests.py --live   # 追加低频实测（勿频繁执行）
 ```
 
+> 本地 API 启动时会自动读取仓库根目录 `.env`（不会上传）；Vercel 则使用项目环境变量，不读取 `.env`。
+>
 > 注意：本地从大陆直连时 DuckDuckGo 大概率超时（GFW），属预期——部署到 Vercel（境外出口）后正常。
 
 ## 部署到 Vercel

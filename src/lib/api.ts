@@ -9,9 +9,15 @@ export class ApiError extends Error {
   }
 }
 
+export interface EngineAvailability {
+  available: boolean
+  reason?: string
+}
+
 export interface AppConfig {
   google_cse_cx?: string
   brave_enabled?: boolean
+  engine_availability?: Record<string, EngineAvailability>
 }
 
 let configCache: AppConfig | null = null

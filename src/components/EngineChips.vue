@@ -5,20 +5,20 @@ defineProps<{ engines: EngineResult[] }>()
 
 const LABELS: Record<string, string> = {
   bing: 'Bing',
-  google: 'Google(CSE)',
+  google: 'Google',
   ddg: 'DuckDuckGo',
   mojeek: 'Mojeek',
-  bilibili: 'B站',
+  bilibili: 'B 站',
   baidu: '百度',
   marginalia: 'Marginalia',
   brave: 'Brave',
   tavily: 'Tavily',
-  serper: 'Serper(Google)',
-  brightdata: 'BrightData(Google)',
+  serper: 'Serper',
+  brightdata: 'BrightData',
   exa: 'Exa',
   firecrawl: 'Firecrawl',
-  scraperapi: 'ScraperAPI(百度)',
-  hasdata: 'HasData(百度)',
+  scraperapi: 'ScraperAPI',
+  hasdata: 'HasData',
   searxng: 'SearXNG',
 }
 const STATUS_LABEL: Record<string, string> = {
@@ -39,13 +39,13 @@ const STATUS_LABEL: Record<string, string> = {
       :class="e.status"
       :title="e.note || e.status"
     >
-      <span class="dot" />
+      <span class="dot" aria-hidden="true" />
       {{ LABELS[e.name] ?? e.name }}
       <template v-if="e.status === 'ok' && e.latency_ms != null">
-        · {{ e.latency_ms }}ms · {{ e.results.length }} 条
+        {{ e.results.length }} 条
       </template>
       <template v-else-if="e.status !== 'ok'">
-        · {{ STATUS_LABEL[e.status] }}<template v-if="e.note">：{{ e.note }}</template>
+        {{ STATUS_LABEL[e.status] }}
       </template>
     </span>
   </div>

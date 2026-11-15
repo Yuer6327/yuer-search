@@ -30,6 +30,7 @@ export async function ensureConfig(): Promise<void> {
   try {
     const cfg = await fetchConfig()
     uiState.googleCx = (cfg.google_cse_cx ?? '').trim()
+    uiState.engineAvailability = cfg.engine_availability ?? {}
   } catch {
     /* 网络失败时回退构建期变量 */
   }
