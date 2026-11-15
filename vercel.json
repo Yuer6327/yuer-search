@@ -7,7 +7,8 @@
     "api/health.py": { "maxDuration": 30 }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.py" }
+    { "source": "/api/(.*)", "destination": "/api/index.py" },
+    { "source": "/search", "destination": "/" }
   ],
   "headers": [
     {

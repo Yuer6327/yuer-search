@@ -38,6 +38,19 @@ case "$s1" in
   *) bad "快速通道（bing）→ ${s1:0:220}" ;;
 esac
 
+# 纯 Bing 单引擎模式：mode=bing 应等价 engines=bing，且只返回 bing 一个引擎
+s3=$(curl -sS -m 30 "$BASE_URL/api/search?q=rust%20async%20tutorial&mode=bing&_=$NONCE" 2>/dev/null)
+case "$s3" in
+  *'"status":"ok"'*) ok "单引擎模式（mode=bing）→ ok" ;;
+  *) bad "单引擎模式（mode=bing）→ ${s3:0:220}" ;;
+esac
+echo "$s3" | grep -q '"name":"bing"' && ! echo "$s3" | grep -qE '"name":"(ddg|marginalia)"' \
+  && ok "mode=bing 引擎清单仅含 bing" || bad "mode=bing 引擎清单异常"
+
+# SPA 路由 /search 必须经 rewrite 兜底回 index.html（浏览器搜索词 URL）
+c2=$(code_of "$BASE_URL/search?q=canary&mode=bing")
+[ "$c2" = "200" ] && ok "SPA 路由 /search → 200" || bad "SPA 路由 /search → $c2"
+
 s2=$(curl -sS -m 45 "$BASE_URL/api/search?q=rust%20async%20tutorial&_=$NONCE" 2>/dev/null)
 case "$s2" in
   *'"status":"ok"'*) ok "全量聚合 → ok" ;;
