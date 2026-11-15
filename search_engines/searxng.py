@@ -61,6 +61,66 @@ def _extract_items(data: dict, blocked: list[str]) -> list[dict]:
     return items
 
 
+def probe_instances(
+    query: str = "test",
+    *,
+    instances_override: list[str] | None = None,
+    timeout: float = 6.0,
+    limit: int = 40,
+) -> dict:
+    """逐实例实测 format=json 开放性（运维诊断用）：/api/debug/searxng。
+
+    并行探测，每实例分类：OPEN（200+有结果）/ EMPTY（200无结果）/ JSON_DISABLED(403) /
+    RATE_LIMITED(429) / HTTP_xxx / UNREACHABLE。开放实例清单可直接用于 SEARXNG_INSTANCES。
+    """
+    import concurrent.futures
+
+    now = time.time()
+    instances = (instances_override or _instances())[:limit]
+    alive = [u for u in instances if _unhealthy_until.get(u, 0) <= now]
+    dead = [u for u in instances if _unhealthy_until.get(u, 0) > now]
+
+    def _probe(inst: str) -> dict:
+        t0 = time.perf_counter()
+        try:
+            resp = http_get(
+                f"{inst}/search",
+                params={"q": query, "format": "json", "safesearch": "1"},
+                timeout=timeout,
+                headers={"Accept": "application/json"},
+            )
+            latency = int((time.perf_counter() - t0) * 1000)
+            if resp.status_code == 200:
+                try:
+                    data = resp.json()
+                    n = len(data.get("results") or [])
+                    verdict = "OPEN" if n else "EMPTY"
+                    return {"instance": inst, "status": 200, "json": True, "results": n, "latency_ms": latency, "verdict": verdict}
+                except Exception:
+                    return {"instance": inst, "status": 200, "json": False, "latency_ms": latency, "verdict": "NOT_JSON"}
+            verdict = {403: "JSON_DISABLED", 429: "RATE_LIMITED"}.get(resp.status_code, f"HTTP_{resp.status_code}")
+            return {"instance": inst, "status": resp.status_code, "latency_ms": latency, "verdict": verdict}
+        except Exception as exc:
+            return {
+                "instance": inst,
+                "latency_ms": int((time.perf_counter() - t0) * 1000),
+                "verdict": "UNREACHABLE",
+                "error": type(exc).__name__,
+            }
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
+        details = list(pool.map(_probe, alive))
+
+    opened = [r["instance"] for r in details if r.get("verdict") == "OPEN"]
+    return {
+        "query": query,
+        "tested": len(details),
+        "open": opened,
+        "cooldown_skipped": dead,
+        "details": details,
+    }
+
+
 def search(
     query: str,
     *,

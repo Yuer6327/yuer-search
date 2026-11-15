@@ -239,6 +239,29 @@ def debug_raw(engine: str = Query(...), q: str = Query("test", max_length=100)) 
     )
 
 
+@app.get("/api/debug/searxng")
+def debug_searxng(
+    q: str = Query("test", max_length=60),
+    instances: str | None = Query(None, max_length=4000),
+) -> JSONResponse:
+    """运维探针：逐实例实测 format=json 开放性（从当前函数出口发起，并行）。
+
+    ?instances=a,b,c 可覆盖实例清单（用于全量探测外部清单）；
+    结果里 verdict=OPEN 的实例可直接填入 SEARXNG_INSTANCES 环境变量。
+    """
+    from search_engines import searxng
+
+    override = [u.strip().rstrip("/") for u in instances.split(",") if u.strip()] if instances else None
+    try:
+        report = searxng.probe_instances(q.strip() or "test", instances_override=override, timeout=6.0, limit=40)
+    except Exception as exc:
+        return JSONResponse(
+            {"probe_error": f"{type(exc).__name__}: {str(exc)[:200]}"},
+            headers={"Cache-Control": "no-store"},
+        )
+    return JSONResponse(report, headers={"Cache-Control": "no-store"})
+
+
 @app.get("/api/search")
 def api_search(
     q: str = Query(..., min_length=1, max_length=200),
