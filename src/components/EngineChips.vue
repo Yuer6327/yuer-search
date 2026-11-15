@@ -4,6 +4,7 @@ import type { EngineResult } from '@/lib/types'
 defineProps<{ engines: EngineResult[] }>()
 
 const LABELS: Record<string, string> = {
+  google: 'Google(CSE)',
   ddg: 'DuckDuckGo',
   bing: 'Bing',
   marginalia: 'Marginalia',

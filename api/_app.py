@@ -85,7 +85,7 @@ def _resolve_engines(engines_param: str | None) -> list[str]:
     else:
         names = [
             name
-            for name in ("ddg", "bing", "marginalia", "brave")
+            for name in ("bing", "google", "ddg", "marginalia", "brave")
             if conf.get(name, {}).get("enabled", name != "brave")
         ]
     # Brave 双重门禁：基线 enabled + 环境变量
@@ -160,6 +160,23 @@ def api_config() -> JSONResponse:
     return JSONResponse(
         {"google_cse_cx": cx, "brave_enabled": brave},
         headers={"Cache-Control": "public, s-maxage=300"},
+    )
+
+
+@app.get("/api/debug/cse")
+def debug_cse(q: str = Query("vue3", max_length=100)) -> JSONResponse:
+    """诊断端点：转储 CSE element/v1 原始响应（格式逆向用；响应内容本身是公开搜索结果）。"""
+    from search_engines import cse
+
+    raw = cse.fetch_raw(q.strip(), lang="en", page=1, timeout=6.0)
+    parsed = None
+    full = raw.get("body_full")
+    if full:
+        data = cse._parse_payload(full)
+        parsed = cse._extract_results(data, [])[:3] if data else None
+    return JSONResponse(
+        {"raw": {k: v for k, v in raw.items() if k != "body_full"}, "parsed_sample": parsed},
+        headers={"Cache-Control": "no-store"},
     )
 
 
