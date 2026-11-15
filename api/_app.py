@@ -168,7 +168,13 @@ def debug_cse(q: str = Query("vue3", max_length=100)) -> JSONResponse:
     """诊断端点：转储 CSE element/v1 原始响应（格式逆向用；响应内容本身是公开搜索结果）。"""
     from search_engines import cse
 
-    raw = cse.fetch_raw(q.strip(), lang="en", page=1, timeout=6.0)
+    try:
+        raw = cse.fetch_raw(q.strip(), lang="en", page=1, timeout=6.0)
+    except Exception as exc:
+        return JSONResponse(
+            {"fetch_error": f"{type(exc).__name__}: {str(exc)[:200]}"},
+            headers={"Cache-Control": "no-store"},
+        )
     parsed = None
     full = raw.get("body_full")
     if full:
