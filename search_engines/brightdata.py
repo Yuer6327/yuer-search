@@ -73,7 +73,7 @@ def fetch_raw(
     token = os.environ.get(_TOKEN_ENV, "").strip()
     zone = get_zone()
     if target == "google":
-        target_url = f"https://www.google.com/search?q={quote(query)}&hl=zh-cn&gl=cn"
+        target_url = f"https://www.google.com/search?q={quote(query)}"
     else:
         target_url = f"https://www.baidu.com/s?wd={quote(query)}&rn=10&pn={(page - 1) * 10}"
     payload: dict = {"zone": zone, "url": target_url, "format": fmt}
