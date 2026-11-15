@@ -3,7 +3,7 @@
   "comment": "全局基线（唯一来源）：前端打包引入 + Python 函数运行时读取。domains 命中规则：host 等于该值，或是它的子域名（*.example.com 覆盖 example.com）。用户个人设置永远覆盖这里的同名规则。",
   "engines": {
     "bing": { "weight": 1.15, "enabled": true, "comment": "Bing 网页抓取 mkt=zh-CN，中文结果主力（带相关性护栏）" },
-    "google": { "weight": 1.2, "enabled": true, "comment": "Google CSE 服务端中继（embed 同源后端 element/v1）：需 GOOGLE_CSE_CX；范围受 CSE 控制台站点池（config/cse-sites.txt）约束" },
+    "google": { "weight": 1.2, "enabled": false, "comment": "Google CSE 服务端中继：已实测 Google 对云 IP 定向丢弃 element/v1 端点（预热/Cookie/参数变体全试过，见 /api/debug/cse），默认关闭。Google 模式（浏览器直连 embed）对能直连 Google 的用户照常可用；换出口 IP（自建反代）后可重新打开" },
     "ddg": { "weight": 1.0, "enabled": true, "comment": "DuckDuckGo html/lite 抓取，Bing 背后索引，英文与通用查询主力" },
     "marginalia": { "weight": 0.3, "enabled": true, "comment": "Marginalia 官方免费 API，独立索引，偏非主流英文内容；中文查询自动跳过" },
     "brave": { "weight": 0.8, "enabled": true, "comment": "Brave 网页抓取：防护以 TLS 指纹为主（curl_cffi 可过）。双重门禁：此处 enabled + 服务端环境变量 BRAVE_ENABLED=1，两者齐备才启用" }

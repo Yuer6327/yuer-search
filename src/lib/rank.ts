@@ -104,9 +104,14 @@ export function mergeAndRank(input: SearchResponse | SearchResponse[]): RankedIt
   return items
 }
 
+/** 引擎在本端是否参与：基线 enabled 与用户偏好取交集（加载分组、设置面板共用） */
+export function engineOn(name: string): boolean {
+  if (prefs.engines[name] === false) return false
+  return B.engines[name]?.enabled ?? name !== 'brave'
+}
+
 /** 顶部外部引擎跳转（结果不可用时的兜底出口） */
-export function externalLinks(query: string): { name: string; url: string }[] {
-  return [
+export function externalLinks(query: string): { name: string; url: string }[] {  return [
     { name: 'Google', url: `https://www.google.com/search?q=${encodeURIComponent(query)}` },
     { name: 'Bing', url: `https://www.bing.com/search?q=${encodeURIComponent(query)}` },
     { name: 'DuckDuckGo', url: `https://duckduckgo.com/?q=${encodeURIComponent(query)}` },

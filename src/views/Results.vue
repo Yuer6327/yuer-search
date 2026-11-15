@@ -6,8 +6,7 @@ import ResultItem from '@/components/ResultItem.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import { ApiError, fetchSearchEngines } from '@/lib/api'
 import { ensureConfig, mountGoogleResults, probeGoogle, runGoogleQuery } from '@/lib/googleMode'
-import { engineEnabled } from '@/lib/prefs'
-import { externalLinks, mergeAndRank } from '@/lib/rank'
+import { externalLinks, mergeAndRank, engineOn } from '@/lib/rank'
 import { openSettings, uiState } from '@/lib/ui'
 import type { SearchResponse } from '@/lib/types'
 
@@ -40,7 +39,7 @@ let seq = 0
 const ENGINE_ORDER = ['bing', 'google', 'ddg', 'marginalia', 'brave']
 
 function splitEngines(): { fast: string[]; rest: string[] } {
-  const enabled = ENGINE_ORDER.filter((name) => engineEnabled(name))
+  const enabled = ENGINE_ORDER.filter((name) => engineOn(name))
   if (!enabled.length) return { fast: ['bing'], rest: [] }
   return { fast: [enabled[0]], rest: enabled.slice(1) }
 }

@@ -112,8 +112,12 @@ curl -sI "https://s.yuer6327.top/api/search?q=test" | grep -iE "cache-control|x-
 ## Google 模式配置
 
 > ⚠️ **2026-11 实测更新**：Google 已对新引擎弃用「Search the entire web」（控制台显示
-> "This feature is being deprecated and can no longer be enabled"，与 JSON API 停服同一产品线收缩）。
+> "This feature is being deprecated and can no longer be enabled"，与 JSON API 停服同一轮产品收缩）。
 > 因此 Google 模式的形态是「**精选站点池内的 Google 质量搜索**」（上限 50 个域名），而非全网搜索。
+>
+> ❌ **服务端中继 Google 已实测不可行**（Google 对云 IP 定向丢弃 element/v1 端点：预热/Cookie/Referer/
+> 参数变体全部黑洞，对照路径 404 秒回，证据见 `/api/debug/cse`）。`google` 引擎（search_engines/cse.py）
+> 默认关闭保留代码，换出口 IP（自建反代）后可重新打开；大陆直连用户请使用聚合模式。
 
 1. 用你的 Google 账号在 [programmablesearchengine.google.com](https://programmablesearchengine.google.com) 免费创建搜索引擎：
    - 创建表单的 "Select sites or pages to search" 随便填一个占位（如 `www.google.com/*`），它不会生效；
