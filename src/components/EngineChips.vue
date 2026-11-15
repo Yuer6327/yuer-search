@@ -4,11 +4,16 @@ import type { EngineResult } from '@/lib/types'
 defineProps<{ engines: EngineResult[] }>()
 
 const LABELS: Record<string, string> = {
+  bing: 'Bing',
   google: 'Google(CSE)',
   ddg: 'DuckDuckGo',
-  bing: 'Bing',
+  mojeek: 'Mojeek',
+  bilibili: 'B站',
+  baidu: '百度',
   marginalia: 'Marginalia',
   brave: 'Brave',
+  tavily: 'Tavily',
+  serper: 'Serper(Google)',
 }
 const STATUS_LABEL: Record<string, string> = {
   ok: '',

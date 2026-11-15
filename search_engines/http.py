@@ -90,3 +90,20 @@ def http_get(url: str, *, headers: dict | None = None, timeout: float = 6.0, par
         if verify:
             kwargs["verify"] = verify
     return _impl.get(url, **kwargs)
+
+
+JSON_HEADERS = {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+}
+
+
+def http_post_json(url: str, payload: dict, *, headers: dict | None = None, timeout: float = 6.0):
+    """POST JSON（官方 API 类引擎：Tavily/Serper 等）。"""
+    kwargs: dict = {"json": payload, "headers": {**JSON_HEADERS, **(headers or {})}, "timeout": timeout}
+    if HAS_CURL_CFFI:
+        kwargs["impersonate"] = "chrome"
+        verify = _safe_verify()
+        if verify:
+            kwargs["verify"] = verify
+    return _impl.post(url, **kwargs)

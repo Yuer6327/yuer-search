@@ -165,12 +165,17 @@ def search(query, *, lang, page, baseline_block, timeout, deadline=None) -> dict
 | 引擎 | 类型 | 风险 | 对策 |
 |---|---|---|---|
 | Bing | HTML 抓取 | 反爬烈度最低；风险是 class 混淆变更、zh 市场参数异常（社区有负面个例） | 相关性护栏自动丢弃静默垃圾；解析器多选择器兜底 |
-| DuckDuckGo | HTML 抓取 | **最高风险**：2025-2026 风控升级（验证码/假 202/TCP 封锁），云 IP 重灾区 | curl_cffi TLS 伪装 + lite/html 双端点 + 边缘缓存压频率；挂了不影响其他引擎 |
+| **B 站** | 公开 JSON 接口 | -412 风控（缺 buvid3 才触发）；接口随时可能收紧 | 伪造 buvid3 + Referer（searxng 同款）；英文查询自动跳过 |
 | Marginalia | 官方免费 API | 限速严格、官方标记 deprecated；纯英文独立索引 | 仅作兜底源、中文查询自动跳过、失败静默降级 |
-| Brave | HTML 抓取 | 反爬军备竞赛（TLS 指纹 + 挑战页） | 默认关闭；开启后遇挑战页自动放弃 |
-| Google CSE | 官方 embed 控件 | 产品线收缩中，长期命运有不确定性；大陆直连不可用 | 仅作增益模式，探活降级，聚合模式为核心 |
+| Tavily | 官方 API | 免费 1000 次/月；中文偏英文语料（社区口碑） | 环境变量 TAVILY_API_KEY 配置后自动启用；未配置自动跳过 |
+| Serper(Google) | 官方 API | 2500 次一次性额度 | 环境变量 SERPER_API_KEY 配置后自动启用；结果带逐条相关性校验 |
+| DuckDuckGo | HTML 抓取 | **已实锤硬封锁**（假 202/验证码/TCP 封锁，预热无效） | 保留代码与机遇性重试；不指望 |
+| Brave | HTML 抓取 | 挑战页（防护不止 TLS 指纹） | env 开关保留；遇挑战页自动放弃 |
+| Google CSE 中继 | element/v1 | **Google 对云 IP 定向黑洞该端点**（变体矩阵实测） | 默认关闭；浏览器直连的 Google 模式不受影响 |
+| Mojeek | HTML 抓取 | **2026-11 实测已上 JS challenge** | 默认关闭，代码保留 |
+| 百度 tn=json | JSON 接口 | **wappass 验证码**（无 Cookie 连住宅 IP 都触发，需完整 Cookie 指纹生成） | 默认关闭；替代：Bright Data 免费层（5000/月，支持百度 SERP） |
 
-结果源均为免费路径（无需绑卡）。抓取属灰色地带，某源某天失效需换——引擎契约让替换成本很低。
+2026-11-15 全网调研后新增的适配器（mojeek/baidu/tavily/serper）即使被反爬拦下也默认关闭、代码保留——反爬环境是移动靶，引擎契约让任何源"关/开/换"都只是一行配置。结果源均为免费路径（无需绑卡）。
 
 ## 隐私声明
 

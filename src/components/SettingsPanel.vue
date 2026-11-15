@@ -20,10 +20,16 @@ import type { Baseline, RuleAction } from '@/lib/types'
 const B = baseline as unknown as Baseline
 const engineNames = Object.keys(B.engines)
 const ENGINE_LABELS: Record<string, string> = {
-  ddg: 'DuckDuckGo',
   bing: 'Bing',
+  google: 'Google(CSE)',
+  ddg: 'DuckDuckGo',
+  mojeek: 'Mojeek',
+  bilibili: 'B 站',
+  baidu: '百度',
   marginalia: 'Marginalia',
   brave: 'Brave（可选）',
+  tavily: 'Tavily',
+  serper: 'Serper(Google)',
 }
 
 const newPattern = ref('')

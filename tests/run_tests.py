@@ -63,6 +63,31 @@ def main() -> int:
     assert detect_lang("python asyncio") == "en"
     print("[ok] 语言检测")
 
+    # ---------- 新引擎解析器（2026-11 调研落地批次） ----------
+    import json as _json
+
+    from search_engines import baidu, bilibili, mojeek
+
+    md = (FIX / "mojeek.html").read_text(encoding="utf-8")
+    mi = mojeek._parse(md, blocked=["csdn.net"])
+    assert len(mi) == 2, f"mojeek 期望 2 条（csdn 过滤），实际 {len(mi)}"
+    assert mi[0]["url"] == "https://www.rust-lang.org/"
+    print("[ok] mojeek 解析 + 基线过滤")
+
+    bd = _json.loads((FIX / "baidu.json").read_text(encoding="utf-8"))
+    bi = baidu._parse(bd, blocked=[])
+    assert len(bi) == 2, f"baidu 期望 2 条（link 包装跳过），实际 {len(bi)}"
+    assert bi[0]["url"] == "https://example.org/rust-async"
+    assert "<em>" not in bi[0]["title"]
+    print("[ok] baidu tn=json 解析 + 重定向链接跳过")
+
+    bl = _json.loads((FIX / "bilibili.json").read_text(encoding="utf-8"))
+    bli = bilibili._parse(bl, blocked=[])
+    assert len(bli) == 2, f"bilibili 期望 2 条，实际 {len(bli)}"
+    assert bli[0]["url"].startswith("https://www.bilibili.com/video/")
+    assert "UP 主" in bli[0]["snippet"]
+    print("[ok] bilibili JSON 解析 + UP 主元信息")
+
     # ---------- API 应用可导入 + 路由注册 ----------
     from api.index import app  # noqa: F401  验证 sys.path 注入与 baseline 加载
 
@@ -73,11 +98,17 @@ def main() -> int:
     # ---------- 可选：低频实测 ----------
     if "--live" in sys.argv:
         print("\n[live] 向可达上游各发 1 次低频实测（本机网络决定可达性；DDG 在大陆直连通常不可达）")
-        for name in ("bing", "marginalia", "ddg"):
+        probes = [
+            ("bing", "python asyncio tutorial", "en"),
+            ("marginalia", "python asyncio tutorial", "en"),
+            ("ddg", "python asyncio tutorial", "en"),
+            ("mojeek", "python asyncio tutorial", "en"),
+            ("baidu", "python 教程", "zh"),
+            ("bilibili", "python 教程", "zh"),
+        ]
+        for name, probe_q, probe_lang in probes:
             try:
-                res = REGISTRY[name](
-                    "python asyncio tutorial", lang="en", page=1, baseline_block=[], timeout=8
-                )
+                res = REGISTRY[name](probe_q, lang=probe_lang, page=1, baseline_block=[], timeout=8)
                 print(f"  {name}: status={res['status']} results={len(res['results'])} note={res.get('note', '')}")
             except Exception as exc:
                 print(f"  {name}: FAIL {type(exc).__name__}: {exc}")

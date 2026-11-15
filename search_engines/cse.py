@@ -19,6 +19,7 @@ import time
 
 from .http import http_session
 from .util import EngineError, apply_pushdown, domain_of, host_matches
+from .util import relevance_tokens as _tokenize  # noqa: F401  与 bing 同款词元
 
 _CX_ENVS = ("GOOGLE_CSE_CX", "VITE_GOOGLE_CSE_CX")
 _ENDPOINT = "https://cse.google.com/cse/element/v1"
@@ -227,15 +228,5 @@ def search(
     }
 
 
-def _tokenize(query: str) -> set[str]:
-    """与 bing.py 同款词元策略：字母数字混合词拆出字母部分。"""
-    q = query.lower()
-    tokens = set(re.findall(r"[a-z0-9]{2,}", q))
-    for word in list(tokens):
-        letters = re.findall(r"[a-z]{2,}", word)
-        tokens.update(letters)
-    cjk = re.findall(r"[\u4e00-\u9fff]", q)
-    if len(cjk) == 1:
-        tokens.add(cjk[0])
-    tokens |= {cjk[i] + cjk[i + 1] for i in range(len(cjk) - 1)}
-    return tokens
+def _tokenize_unused_placeholder() -> None:  # pragma: no cover
+    """词元逻辑已迁移至 util.relevance_tokens（见模块顶部别名）。"""

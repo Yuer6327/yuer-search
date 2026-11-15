@@ -18,6 +18,7 @@ from bs4 import BeautifulSoup
 
 from .http import http_session
 from .util import EngineError, apply_pushdown, domain_of, host_matches
+from .util import relevance_tokens as _tokenize  # noqa: F401  兼容测试引用
 
 _MAX_RESULTS = 15
 
@@ -37,21 +38,6 @@ def _unwrap_bing(href: str | None) -> str | None:
             except Exception:
                 return None
     return href if href.startswith("http") else None
-
-
-def _tokenize(query: str) -> set[str]:
-    """提取查询词元。字母数字混合词（vue3/html5）额外拆出字母部分，
-    避免 Bing 把 "vue3" 归一化成 "Vue.js 3" 时字面子串匹配不上而误杀。"""
-    q = query.lower()
-    tokens = set(re.findall(r"[a-z0-9]{2,}", q))
-    for word in list(tokens):
-        letters = re.findall(r"[a-z]{2,}", word)
-        tokens.update(letters)
-    cjk = re.findall(r"[\u4e00-\u9fff]", q)
-    if len(cjk) == 1:
-        tokens.add(cjk[0])
-    tokens |= {cjk[i] + cjk[i + 1] for i in range(len(cjk) - 1)}
-    return tokens
 
 
 def _parse(html: str, blocked: list[str]) -> list[dict]:

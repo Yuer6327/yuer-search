@@ -36,7 +36,7 @@ const googleContainer = ref<HTMLElement | null>(null)
 
 let seq = 0
 
-const ENGINE_ORDER = ['bing', 'google', 'ddg', 'marginalia', 'brave']
+const ENGINE_ORDER = ['bing', 'google', 'ddg', 'mojeek', 'bilibili', 'baidu', 'marginalia', 'brave', 'tavily', 'serper']
 
 function splitEngines(): { fast: string[]; rest: string[] } {
   const enabled = ENGINE_ORDER.filter((name) => engineOn(name))

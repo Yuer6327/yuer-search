@@ -39,6 +39,11 @@ except Exception:  # pragma: no cover
     brave_enabled = lambda: False  # noqa: E731
 
 _BRAVE_ENV_FLAG = bool(os.environ.get("BRAVE_ENABLED", "").strip() == "1")
+# 官方 API 类引擎的双重门禁：基线 enabled + 环境变量 key 齐备才默认启用
+_API_KEY_GATES = {
+    "tavily": "TAVILY_API_KEY",
+    "serper": "SERPER_API_KEY",
+}
 
 _HTTP_TIMEOUT = 6.0
 _TOTAL_TIMEOUT = 9.0
@@ -85,12 +90,15 @@ def _resolve_engines(engines_param: str | None) -> list[str]:
     else:
         names = [
             name
-            for name in ("bing", "google", "ddg", "marginalia", "brave")
+            for name in ("bing", "google", "ddg", "mojeek", "bilibili", "baidu", "marginalia", "brave", "tavily", "serper")
             if conf.get(name, {}).get("enabled", name != "brave")
         ]
-    # Brave 双重门禁：基线 enabled + 环境变量
+    # 双重门禁引擎：基线 enabled + 环境变量齐备才默认启用
     if "brave" in names and not (_BRAVE_ENV_FLAG and conf.get("brave", {}).get("enabled")):
         names.remove("brave")
+    for name, env_key in _API_KEY_GATES.items():
+        if name in names and not os.environ.get(env_key, "").strip():
+            names.remove(name)
     return names
 
 

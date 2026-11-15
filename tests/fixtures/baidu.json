@@ -1,0 +1,10 @@
+{
+  "feed": {
+    "entry": [
+      { "title": "<em>rust</em> 异步编程指南 - 示例站", "url": "https://example.org/rust-async", "abs": "Rust 异步编程入门教程，涵盖 tokio 基础。" },
+      { "title": "重定向包装链接（应被跳过）", "url": "https://www.baidu.com/link?url=abc123", "abs": "跳转链接。" },
+      { "title": "<em>rust</em> 教程 | 菜鸟教程", "url": "https://runoob.com/rust", "abs": "Rust 基础教程。" }
+    ]
+  },
+  "queryid": "fixture"
+}

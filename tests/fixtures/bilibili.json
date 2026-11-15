@@ -1,0 +1,21 @@
+{
+  "code": 0,
+  "data": {
+    "result": [
+      {
+        "title": "<em class=\"keyword\">rust</em> 入门教程【十分钟上手】",
+        "arcurl": "https://www.bilibili.com/video/BV1xx411c7mD",
+        "description": "手把手 rust 入门，覆盖所有权与生命周期。",
+        "author": "技术UP主",
+        "duration": "12:00"
+      },
+      {
+        "title": "<em class=\"keyword\">rust</em> 进阶实战",
+        "arcurl": "https://www.bilibili.com/video/BV2xx411c7mE",
+        "description": "async/await 与 tokio 实战。",
+        "author": "UP主二号",
+        "duration": "8:30"
+      }
+    ]
+  }
+}
