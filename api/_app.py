@@ -235,22 +235,36 @@ def debug_raw(
     except Exception as exc:
         return JSONResponse({"fetch_error": f"{type(exc).__name__}: {str(exc)[:200]}"}, headers={"Cache-Control": "no-store"})
     parsed = None
+    diag: dict = {}
     full = raw.get("body_full") or raw.get("body_head") or ""
     try:
         if hasattr(mod, "_parse_payload"):
             data = mod._parse_payload(full)
             if data:
                 parsed = mod._extract_results(data, [])[:3]
-        elif hasattr(mod, "_extract_list") and isinstance(raw.get("body_head"), str):
+        elif hasattr(mod, "_extract_list") and full.strip().startswith("{"):
             import json as _json
 
-            data = _json.loads(full) if full.strip().startswith("{") else None
-            if data:
-                parsed = mod._extract_list(data)[:3]
-    except Exception:
-        parsed = None
+            wrapper = _json.loads(full)
+            body = wrapper.get("body", "") if isinstance(wrapper, dict) else ""
+            diag["wrapper_keys"] = list(wrapper.keys())[:8] if isinstance(wrapper, dict) else None
+            diag["body_kind"] = "json" if body.strip().startswith("{") else ("html" if body.strip().startswith("<") else "other")
+            diag["body_len"] = len(body)
+            if body.strip().startswith("{"):
+                inner = _json.loads(body)
+                diag["inner_keys"] = list(inner.keys())[:10]
+                for key in ("organic", "results"):
+                    if isinstance(inner.get(key), list):
+                        diag[f"{key}_count"] = len(inner[key])
+                        diag[f"{key}_sample"] = [
+                            {k: str(v)[:44] for k, v in row.items() if k in ("title", "url", "link", "description", "pos")}
+                            for row in inner[key][:2]
+                        ]
+            parsed = None
+    except Exception as exc:
+        diag = {"diag_error": str(exc)[:120]}
     return JSONResponse(
-        {"raw": {k: v for k, v in raw.items() if k != "body_full"}, "parsed_sample": parsed},
+        {"raw": {k: v for k, v in raw.items() if k != "body_full"}, "parsed_sample": parsed, "diag": diag},
         headers={"Cache-Control": "no-store"},
     )
 
