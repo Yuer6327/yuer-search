@@ -40,8 +40,13 @@ def _unwrap_bing(href: str | None) -> str | None:
 
 
 def _tokenize(query: str) -> set[str]:
+    """提取查询词元。字母数字混合词（vue3/html5）额外拆出字母部分，
+    避免 Bing 把 "vue3" 归一化成 "Vue.js 3" 时字面子串匹配不上而误杀。"""
     q = query.lower()
     tokens = set(re.findall(r"[a-z0-9]{2,}", q))
+    for word in list(tokens):
+        letters = re.findall(r"[a-z]{2,}", word)
+        tokens.update(letters)
     cjk = re.findall(r"[\u4e00-\u9fff]", q)
     if len(cjk) == 1:
         tokens.add(cjk[0])

@@ -4,10 +4,11 @@ import { useRoute, useRouter } from 'vue-router'
 import EngineChips from '@/components/EngineChips.vue'
 import ResultItem from '@/components/ResultItem.vue'
 import SearchBar from '@/components/SearchBar.vue'
-import { ApiError, fetchSearch } from '@/lib/api'
-import { CSE_CX, mountGoogleResults, probeGoogle, runGoogleQuery } from '@/lib/googleMode'
+import { ApiError, fetchSearchEngines } from '@/lib/api'
+import { ensureConfig, mountGoogleResults, probeGoogle, runGoogleQuery } from '@/lib/googleMode'
+import { engineEnabled } from '@/lib/prefs'
 import { externalLinks, mergeAndRank } from '@/lib/rank'
-import { openSettings } from '@/lib/ui'
+import { openSettings, uiState } from '@/lib/ui'
 import type { SearchResponse } from '@/lib/types'
 
 const route = useRoute()
@@ -16,30 +17,98 @@ const router = useRouter()
 const q = computed(() => String(route.query.q ?? '').trim())
 const mode = computed<'agg' | 'google'>(() => (route.query.mode === 'google' ? 'google' : 'agg'))
 
-const resp = ref<SearchResponse | null>(null)
+/**
+ * 两段式渐进加载：
+ * 第一段 = 第一个启用引擎（默认 Bing，中文主力）→ 响应一到立即筛选排序渲染；
+ * 第二段 = 其余引擎并行后台抓 → 完成后出「点击重排」提示，点击仅做前端合并排序，
+ *          不发送任何新请求。两段共用同一次上游抓取（engines 参数分片），边缘缓存各自独立。
+ */
+const respFast = ref<SearchResponse | null>(null)
+const respRest = ref<SearchResponse | null>(null)
+const restPending = ref(false)
+const restError = ref('')
+const visible = ref<'fast' | 'all'>('fast')
+const showRerankHint = ref(false)
 const loading = ref(false)
 const error = ref('')
 const page = ref(1)
 const googleOk = ref<boolean | null>(null)
 const googleContainer = ref<HTMLElement | null>(null)
 
-const items = computed(() => (resp.value ? mergeAndRank(resp.value) : []))
+let seq = 0
+
+const ENGINE_ORDER = ['bing', 'ddg', 'marginalia', 'brave']
+
+function splitEngines(): { fast: string[]; rest: string[] } {
+  const enabled = ENGINE_ORDER.filter((name) => engineEnabled(name))
+  if (!enabled.length) return { fast: ['bing'], rest: [] }
+  return { fast: [enabled[0]], rest: enabled.slice(1) }
+}
+
+const visibleSources = computed<SearchResponse[]>(() => {
+  const arr: SearchResponse[] = []
+  if (respFast.value) arr.push(respFast.value)
+  if (visible.value === 'all' && respRest.value) arr.push(respRest.value)
+  return arr
+})
+const items = computed(() => mergeAndRank(visibleSources.value))
 const hasMore = computed(() =>
-  (resp.value?.engines ?? []).some((e) => e.status === 'ok' && e.results.length >= 10),
+  visibleSources.value.some((r) => r.engines.some((e) => e.status === 'ok' && e.results.length >= 10)),
 )
 
-async function load(fresh = false): Promise<void> {
-  if (!q.value) return
+async function search(fresh = false): Promise<void> {
+  if (!q.value || mode.value !== 'agg') return
+  const mySeq = ++seq
+  const { fast, rest } = splitEngines()
   loading.value = true
   error.value = ''
-  try {
-    resp.value = await fetchSearch(q.value, page.value, fresh)
-  } catch (e) {
-    error.value = e instanceof ApiError ? e.message : String(e)
-    resp.value = null
-  } finally {
-    loading.value = false
+  respFast.value = null
+  respRest.value = null
+  restPending.value = false
+  restError.value = ''
+  visible.value = 'fast'
+  showRerankHint.value = false
+
+  const p1 = fetchSearchEngines(q.value, fast, page.value, fresh).then(
+    (r) => {
+      if (mySeq === seq) respFast.value = r
+    },
+    (e: unknown) => {
+      if (mySeq === seq) error.value = e instanceof ApiError ? e.message : String(e)
+    },
+  )
+  const p2 = rest.length
+    ? fetchSearchEngines(q.value, rest, page.value, fresh).then(
+        (r) => {
+          if (mySeq === seq) respRest.value = r
+        },
+        (e: unknown) => {
+          if (mySeq === seq) restError.value = e instanceof ApiError ? e.message : String(e)
+        },
+      )
+    : null
+
+  await p1 // 第一批结果一到就渲染，不等其余引擎
+  if (mySeq !== seq) return
+  loading.value = false
+
+  if (!p2) return
+  restPending.value = true
+  await p2
+  if (mySeq !== seq) return
+  restPending.value = false
+  if (!respRest.value) return
+  const added = respRest.value.engines.some((e) => e.status === 'ok' && e.results.length > 0)
+  if (added && items.value.length > 0) {
+    showRerankHint.value = true // 不打断阅读，等用户点击重排（纯前端合并）
+  } else if (added) {
+    visible.value = 'all' // 第一批为空 → 直接自动合并
   }
+}
+
+function applyRest(): void {
+  visible.value = 'all'
+  showRerankHint.value = false
 }
 
 function setMode(m: 'agg' | 'google'): void {
@@ -47,7 +116,8 @@ function setMode(m: 'agg' | 'google'): void {
 }
 
 async function ensureGoogle(): Promise<void> {
-  if (!CSE_CX) {
+  await ensureConfig()
+  if (!uiState.googleCx) {
     googleOk.value = false
     return
   }
@@ -62,7 +132,7 @@ async function ensureGoogle(): Promise<void> {
 watch(
   [q, page],
   () => {
-    if (mode.value === 'agg') void load()
+    if (mode.value === 'agg') void search()
   },
   { immediate: true },
 )
@@ -70,7 +140,7 @@ watch(
 watch(mode, (m) => {
   page.value = 1
   if (m === 'google') void ensureGoogle()
-  else void load()
+  else void search()
 })
 
 watch(q, (query) => {
@@ -82,7 +152,7 @@ onMounted(() => {
 })
 
 function refresh(fresh = false): void {
-  void load(fresh)
+  void search(fresh)
 }
 </script>
 
@@ -93,15 +163,17 @@ function refresh(fresh = false): void {
       <SearchBar :initial="q" />
       <div class="mode-switch">
         <button :class="{ on: mode === 'agg' }" @click="setMode('agg')">聚合</button>
-        <button v-if="CSE_CX" :class="{ on: mode === 'google' }" @click="setMode('google')">Google</button>
+        <button v-if="uiState.googleCx" :class="{ on: mode === 'google' }" @click="setMode('google')">
+          Google
+        </button>
       </div>
       <button class="icon-btn" title="设置（每用户权重 / 类别 / 引擎开关）" @click="openSettings">⚙</button>
     </header>
 
     <!-- Google 模式 -->
     <main v-if="mode === 'google'" class="results">
-      <div v-if="!CSE_CX" class="empty-state">
-        未配置 Google 模式：部署时需设置环境变量 VITE_GOOGLE_CSE_CX（见 README）。
+      <div v-if="!uiState.googleCx" class="empty-state">
+        未配置 Google 模式：Vercel 环境变量 GOOGLE_CSE_CX 未设置（见 README）。
       </div>
       <div v-else-if="googleOk === false" class="empty-state">
         <p>当前网络无法直连 Google，Google 模式不可用。</p>
@@ -113,9 +185,17 @@ function refresh(fresh = false): void {
 
     <!-- 聚合模式 -->
     <main v-else class="results">
-      <EngineChips v-if="resp" :engines="resp.engines" />
-      <div v-if="resp" class="engine-chips">
+      <EngineChips v-if="respFast" :engines="respFast.engines" />
+      <EngineChips v-if="respRest && visible === 'all'" :engines="respRest.engines" />
+      <span v-if="restPending" class="chip"><span class="dot" />其余引擎 · 抓取中…</span>
+      <span v-else-if="restError" class="chip error"><span class="dot" />其余引擎 · {{ restError }}</span>
+      <div v-if="respFast" class="engine-chips">
         <button class="chip" title="绕过边缘缓存重新聚合" @click="refresh(true)">↻ 强制刷新</button>
+      </div>
+
+      <div v-if="showRerankHint" class="rerank-hint">
+        <span>已获取到更多引擎的结果</span>
+        <button class="btn primary" @click="applyRest">点击重排</button>
       </div>
 
       <template v-if="loading">
@@ -135,7 +215,7 @@ function refresh(fresh = false): void {
       </div>
 
       <template v-else>
-        <div v-if="!items.length" class="empty-state">
+        <div v-if="!items.length && !restPending" class="empty-state">
           <p>没有可显示的结果。</p>
           <p class="hint" style="font-size: 13px">
             所有引擎都失败或结果被过滤。可点「强制刷新」重试，或切换引擎设置。

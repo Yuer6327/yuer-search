@@ -5,18 +5,37 @@
  * - embed 是浏览器直连 Google，大陆直连用户加载不了 → 进入前先探活，不可达就优雅降级回聚合模式；
  * - 用官方 Element Control API（google.search.cse.element.render/execute）程序化渲染，
  *   配合 MutationObserver 对每次结果渲染做两件事：剥跟踪属性（Luxirty 同款思路）、
- *   按用户 localStorage 规则隐藏被屏蔽站点；
- * - 基线屏蔽的"源头生效"靠部署者在 CSE 控制台配置 Annotations（见 README）；
+ *   按用户 localStorage 规则隐藏被屏蔽站点 + 剔除免费版广告位；
+ * - cx 从 /api/config 运行时注入（Vercel 环境变量名不允许 VITE_ 前缀；cx 本身是公开值），
+ *   构建期 VITE_GOOGLE_CSE_CX 仅作回退；
+ * - 基线屏蔽的"源头生效"靠部署者在 CSE 控制台配置站点白名单/Annotations（见 README）；
  * - 个人"提权"在 embed 模式下只能做页面内重排、效果有限，故诚实降级为只做隐藏。
  */
+import { fetchConfig } from './api'
 import { ruleFor } from './prefs'
+import { uiState } from './ui'
 
-export const CSE_CX: string | undefined = import.meta.env.VITE_GOOGLE_CSE_CX
+const FALLBACK_CX: string = import.meta.env.VITE_GOOGLE_CSE_CX ?? ''
 
 const GNAME = 'yuer-results'
 
 let probeCache: boolean | null = null
 let scriptStarted = false
+let configStarted = false
+
+/** 拉取运行时配置（cx）。App 挂载时调用一次，模块级缓存 */
+export async function ensureConfig(): Promise<void> {
+  if (configStarted) return
+  configStarted = true
+  try {
+    const cfg = await fetchConfig()
+    uiState.googleCx = (cfg.google_cse_cx ?? '').trim()
+  } catch {
+    /* 网络失败时回退构建期变量 */
+  }
+  if (!uiState.googleCx) uiState.googleCx = FALLBACK_CX.trim()
+  uiState.configLoaded = true
+}
 
 /** 探活 cse.google.com：可直连 Google 的用户返回 true（被墙域名 no-cors fetch 直接 reject） */
 export async function probeGoogle(timeoutMs = 2500): Promise<boolean> {
@@ -67,20 +86,21 @@ function setCallbacks(): void {
   }
 }
 
-function loadScript(): void {
+function loadScript(cx: string): void {
   if (scriptStarted) return
   scriptStarted = true
   const s = document.createElement('script')
-  s.src = `https://cse.google.com/cse.js?cx=${CSE_CX}`
+  s.src = `https://cse.google.com/cse.js?cx=${cx}`
   s.async = true
   document.head.appendChild(s)
 }
 
 /** 程序化渲染 searchresults-only 并执行初始查询；控件就绪前轮询（最多 ~8s） */
 export function mountGoogleResults(container: HTMLElement, query: string): void {
-  if (!CSE_CX) return
+  const cx = uiState.googleCx
+  if (!cx) return
   setCallbacks()
-  loadScript()
+  loadScript(cx)
 
   const observer = new MutationObserver(() => postProcess(container))
   observer.observe(container, { childList: true, subtree: true })

@@ -46,10 +46,12 @@ function normalizeUrl(raw: string): string {
   }
 }
 
-export function mergeAndRank(resp: SearchResponse): RankedItem[] {
+export function mergeAndRank(input: SearchResponse | SearchResponse[]): RankedItem[] {
+  const responses = Array.isArray(input) ? input : [input]
   const map = new Map<string, RankedItem>()
 
-  for (const eng of resp.engines) {
+  for (const resp of responses) {
+    for (const eng of resp.engines) {
     if (eng.status !== 'ok') continue
     if (prefs.engines[eng.name] === false) continue // 用户显式关闭的引擎不参与
     const weight = B.engines[eng.name]?.weight ?? 1
@@ -80,6 +82,7 @@ export function mergeAndRank(resp: SearchResponse): RankedItem[] {
         })
       }
     })
+    }
   }
 
   let items = [...map.values()].sort((a, b) => b.score - a.score)

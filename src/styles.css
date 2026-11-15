@@ -520,6 +520,21 @@ select:focus {
   padding: 22px 0;
 }
 
+/* ---------- 两段式重排提示 ---------- */
+
+.rerank-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 14px 0 4px;
+  padding: 10px 14px;
+  background: var(--accent-weak);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  font-size: 13.5px;
+}
+
 @media (max-width: 640px) {
   .topbar { flex-wrap: wrap; }
   .topbar .searchbox { order: 3; width: 100%; max-width: none; }

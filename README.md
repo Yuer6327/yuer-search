@@ -36,7 +36,7 @@
 | 0 广告 | UI 无广告；抓取层剔除上游广告位（Bing `b_ad` 等） |
 | 每用户自定义类别/站点权重 | 设置面板：域名规则 block/raise/lower（≤300 条）+ 类别 Lens（≤20 个）+ 引擎开关，全部本地 |
 | 多引擎聚合 | DDG + Bing + Marginalia（+ 可选 Brave）并行抓取、权重融合、URL 去重 |
-| 快 | 边缘缓存按查询词 30 分钟（重复查询零回源）、函数区域 hkg1、Vite 产物 ~47KB gzip |
+| 快 | **两段式渐进加载**（第一批结果 ~0.5s 即渲染，其余引擎后台并行、完成后一键前端重排，不重发请求）、边缘缓存按查询词 30 分钟（重复查询零回源）、函数区域 hkg1、Vite 产物 ~47KB gzip |
 | 稳 | 单引擎失败不影响其他引擎（per-engine 状态条）；9s 编排硬上限；Marginalia 官方 API 作合规兜底 |
 | 准 | Bing `mkt=zh-CN` 中文主力 + 相关性护栏防"静默垃圾结果"；Google 模式补 Google 质量 |
 
@@ -96,7 +96,7 @@ Vercel → Settings → Domains → 添加 `s.yuer6327.top`，等证书签发。
 
 | 变量 | 作用 |
 |---|---|
-| `VITE_GOOGLE_CSE_CX` | Google 模式的 CSE 引擎 ID；不设则前端隐藏 Google 模式入口 |
+| `GOOGLE_CSE_CX` | Google 模式的 CSE 引擎 ID——运行时经 `/api/config` 注入前端（Vercel 环境变量名不允许 `VITE_` 前缀；旧名 `VITE_GOOGLE_CSE_CX` 仍兼容）；不设则前端隐藏 Google 模式入口 |
 | `BRAVE_ENABLED` | 设 `1` 启用 Brave 抓取引擎（默认关闭；反爬风险自负） |
 
 ### 5. 验证缓存与预热
@@ -120,8 +120,8 @@ curl -sI "https://s.yuer6327.top/api/search?q=test" | grep -iE "cache-control|x-
    - Image search 关闭、SafeSearch 保持开启。
 2. 创建后，在 **Sites to search**（Add sites to include 文本框）粘贴 [`config/cse-sites.txt`](config/cse-sites.txt)
    的内容（每行一条，~40 个主流开发站点，留有余量；语义 `*.example.com` = 含子域名的整个域名）。
-3. 记下 **Search engine ID**（cx），设为 Vercel 环境变量 `VITE_GOOGLE_CSE_CX`（`VITE_` 前缀变量是构建期注入，
-   设置后必须 **Redeploy**），前端即出现 Google 模式入口。
+3. 记下 **Search engine ID**（cx），设为 Vercel 环境变量 `GOOGLE_CSE_CX`，然后 Redeploy——前端经
+   `/api/config` 运行时读取（cx 本身是公开值），设置后即出现 Google 模式入口。
 4. "Add sites to exclude" 在白名单模式下基本冗余（屏蔽只在包含站点内生效）——白名单本身就是最强的屏蔽。
    `config/baseline.json` 的农场黑名单对聚合模式照常生效（-site: 下推 + 前端过滤）。
 5. 行为说明：embed 控件免费且无每日额度限制（不在 2027 JSON API 停服范围）；前端探活

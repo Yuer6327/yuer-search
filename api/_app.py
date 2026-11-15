@@ -147,6 +147,22 @@ def _run_engines(names: list[str], *, query: str, lang: str, page: int, block: l
     return out
 
 
+@app.get("/api/config")
+def api_config() -> JSONResponse:
+    """前端运行时配置。cx 是公开值（embed 页面源码可见），经服务端注入以兼容
+    Vercel 环境变量名限制（不允许 VITE_ 前缀）；同时兼容旧构建期变量名。"""
+    cx = (
+        os.environ.get("GOOGLE_CSE_CX")
+        or os.environ.get("VITE_GOOGLE_CSE_CX")
+        or ""
+    ).strip()
+    brave = os.environ.get("BRAVE_ENABLED", "").strip() == "1"
+    return JSONResponse(
+        {"google_cse_cx": cx, "brave_enabled": brave},
+        headers={"Cache-Control": "public, s-maxage=300"},
+    )
+
+
 @app.get("/api/search")
 def api_search(
     q: str = Query(..., min_length=1, max_length=200),
