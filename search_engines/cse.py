@@ -63,8 +63,10 @@ def fetch_raw(query: str, *, lang: str = "en", page: int = 1, timeout: float = 6
 
     variants = {
         "element_full": (f"{_ENDPOINT}", {**base_params, "cseclient": "host"}),
-        "element_noclient": (f"{_ENDPOINT}", base_params),
-        "element_csbe": (f"{_ENDPOINT}", {**base_params, "client": "google-csbe"}),
+        "element_minimal": (f"{_ENDPOINT}", {"cx": cx, "q": query}),
+        "element_jsonp": (f"{_ENDPOINT}", {**base_params, "callback": "google.search.cse.api0.render"}),
+        "element_v2": (f"https://cse.google.com/cse/element/v2", {**base_params, "cseclient": "host"}),
+        "element_gapis": (f"https://cse.googleapis.com/cse/element/v1", {**base_params, "cseclient": "host"}),
         "public_page": (f"https://cse.google.com/cse?cx={cx}&q={query}", {}),
     }
     for name, (url, params) in variants.items():
