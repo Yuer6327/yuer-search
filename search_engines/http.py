@@ -80,15 +80,28 @@ def _safe_verify() -> str | None:
         return None
 
 
-def http_get(url: str, *, headers: dict | None = None, timeout: float = 6.0, params: dict | None = None):
-    kwargs: dict = {"headers": {**CHROME_HEADERS, **(headers or {})}, "timeout": timeout}
-    if params:
-        kwargs["params"] = params
+def _apply_fingerprint(kwargs: dict) -> None:
     if HAS_CURL_CFFI:
         kwargs["impersonate"] = "chrome"
         verify = _safe_verify()
         if verify:
             kwargs["verify"] = verify
+
+
+def http_get(
+    url: str,
+    *,
+    headers: dict | None = None,
+    timeout: float = 6.0,
+    params: dict | None = None,
+    proxies: dict | None = None,
+):
+    kwargs: dict = {"headers": {**CHROME_HEADERS, **(headers or {})}, "timeout": timeout}
+    if params:
+        kwargs["params"] = params
+    if proxies:
+        kwargs["proxies"] = proxies
+    _apply_fingerprint(kwargs)
     return _impl.get(url, **kwargs)
 
 
@@ -98,12 +111,17 @@ JSON_HEADERS = {
 }
 
 
-def http_post_json(url: str, payload: dict, *, headers: dict | None = None, timeout: float = 6.0):
+def http_post_json(
+    url: str,
+    payload: dict,
+    *,
+    headers: dict | None = None,
+    timeout: float = 6.0,
+    proxies: dict | None = None,
+):
     """POST JSON（官方 API 类引擎：Tavily/Serper 等）。"""
     kwargs: dict = {"json": payload, "headers": {**JSON_HEADERS, **(headers or {})}, "timeout": timeout}
-    if HAS_CURL_CFFI:
-        kwargs["impersonate"] = "chrome"
-        verify = _safe_verify()
-        if verify:
-            kwargs["verify"] = verify
+    if proxies:
+        kwargs["proxies"] = proxies
+    _apply_fingerprint(kwargs)
     return _impl.post(url, **kwargs)

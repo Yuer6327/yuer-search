@@ -109,6 +109,24 @@ curl -sI "https://s.yuer6327.top/api/search?q=test" | grep -iE "cache-control|x-
 仓库自带 [缓存预热工作流](.github/workflows/cache-hit-check.yml)：push 到 main 后自动预热边缘缓存并统计
 `X-Vercel-Cache` 命中率（目标 ≥95%），结果写入 Actions Summary。用 [itdog.cn](https://www.itdog.cn) 三网拨测确认全国可达。
 
+## 环境变量 / API Key 统一清单（2026-11-15）
+
+全部免费、无需绑卡。**不填的 key 对应引擎自动跳过**（不报错、不进状态条），填入 Vercel 环境变量后 Redeploy 即自动启用。
+
+| 环境变量 | 服务 / 注册地 | 免费额度 | 引擎 | 说明 |
+|---|---|---|---|---|
+| —（无需） | — | — | Bing / B站 / SearXNG / Marginalia | 开箱即用，零配置 |
+| `TAVILY_API_KEY` | [tavily.com](https://tavily.com) | **1000 credits/月**，每月重置 | Tavily | 官方明示不绑卡；长期稳定兜底源 |
+| `SERPER_API_KEY` | [serper.dev](https://serper.dev) | **2500 次**（一次性） | Serper(Google) | 官方明示不绑卡；Google 中文质量基准 |
+| `EXA_API_KEY` | [exa.ai](https://exa.ai) | $10/月（每月重置）≈2500 次 | Exa | 官方文档不绑卡；语义搜索，无字面相关性护栏 |
+| `FIRECRAWL_API_KEY` | [firecrawl.dev](https://firecrawl.dev) | 1000 credits/月 ≈500 次搜索 | Firecrawl | 搜索+正文抓取一体 |
+| `BRIGHTDATA_PROXY_USER` + `BRIGHTDATA_PROXY_PASSWORD` | [brightdata.com](https://brightdata.com)（建 **SERP 类型 Zone**） | **5000 credits/月**，官方明示不绑卡（注册或有 KYC 摩擦） | BrightData(百度) | **免费方案里唯一官方级百度结果**；Zone 类型必须选 SERP |
+| `SCRAPERAPI_KEY` | [scraperapi.com](https://scraperapi.com) | 1000 credits/月 | ScraperAPI(百度) | 作为百度 tn=json 的传输通道（代理过验证码） |
+| `HASDATA_KEY` | [hasdata.com](https://hasdata.com) | 1000 credits/月 | HasData(百度) | 同上，第二个百度传输通道 |
+| `SEARXNG_INSTANCES` | —（可选） | — | SearXNG | 逗号分隔的实例清单；不填用内置默认 8 个，熔断轮换自动跳过坏实例 |
+| `BRAVE_ENABLED` | —（已有） | — | Brave | 已设 `1`（引擎本身被挑战页拦，保留观察） |
+| `GOOGLE_CSE_CX` | —（已配置） | — | Google 模式 | 已生效 |
+
 ## Google 模式配置
 
 > ⚠️ **2026-11 实测更新**：Google 已对新引擎弃用「Search the entire web」（控制台显示

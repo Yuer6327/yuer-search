@@ -14,6 +14,12 @@ const LABELS: Record<string, string> = {
   brave: 'Brave',
   tavily: 'Tavily',
   serper: 'Serper(Google)',
+  brightdata: 'BrightData(百度)',
+  exa: 'Exa',
+  firecrawl: 'Firecrawl',
+  scraperapi: 'ScraperAPI(百度)',
+  hasdata: 'HasData(百度)',
+  searxng: 'SearXNG',
 }
 const STATUS_LABEL: Record<string, string> = {
   ok: '',

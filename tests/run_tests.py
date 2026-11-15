@@ -88,6 +88,20 @@ def main() -> int:
     assert "UP 主" in bli[0]["snippet"]
     print("[ok] bilibili JSON 解析 + UP 主元信息")
 
+    # ---------- SearXNG / BrightData 解析（2026-11-15 第二批） ----------
+    from search_engines import brightdata, searxng
+
+    sx = _json.loads((FIX / "searxng.json").read_text(encoding="utf-8"))
+    sxi = searxng._extract_items(sx, blocked=["csdn.net"])
+    assert len(sxi) == 2, f"searxng 期望 2 条（csdn 过滤），实际 {len(sxi)}"
+    assert sxi[0]["snippet"] == "Example content one"
+    print("[ok] searxng JSON 解析 + 基线过滤")
+
+    brd = _json.loads((FIX / "brightdata.json").read_text(encoding="utf-8"))
+    bri = brightdata._extract_list(brd)
+    assert len(bri) == 2 and bri[0]["url"].endswith("/rust-async")
+    print("[ok] brightdata organic 结构解析")
+
     # ---------- API 应用可导入 + 路由注册 ----------
     from api.index import app  # noqa: F401  验证 sys.path 注入与 baseline 加载
 

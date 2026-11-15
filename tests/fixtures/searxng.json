@@ -1,0 +1,7 @@
+{
+  "results": [
+    { "title": "Rust 异步编程 - 示例一", "url": "https://example.org/rust-async", "content": "Example content one" },
+    { "title": "Rust 教程（csdn，应被过滤）", "url": "https://blog.csdn.net/x", "content": "farm content" },
+    { "title": "Example two", "url": "https://example.net/two", "content": "Example content two" }
+  ]
+}

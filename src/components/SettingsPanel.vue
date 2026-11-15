@@ -30,6 +30,12 @@ const ENGINE_LABELS: Record<string, string> = {
   brave: 'Brave（可选）',
   tavily: 'Tavily',
   serper: 'Serper(Google)',
+  brightdata: 'BrightData(百度)',
+  exa: 'Exa',
+  firecrawl: 'Firecrawl',
+  scraperapi: 'ScraperAPI(百度)',
+  hasdata: 'HasData(百度)',
+  searxng: 'SearXNG',
 }
 
 const newPattern = ref('')

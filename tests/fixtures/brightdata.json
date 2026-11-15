@@ -1,0 +1,7 @@
+{
+  "organic": [
+    { "title": "Rust 异步编程指南", "url": "https://example.org/rust-async", "description": "Rust 异步入门" },
+    { "title": "Rust 教程 | 菜鸟", "url": "https://runoob.com/rust", "description": "基础教程" }
+  ],
+  "general": { "url": "https://www.baidu.com/s" }
+}

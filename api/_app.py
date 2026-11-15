@@ -39,10 +39,15 @@ except Exception:  # pragma: no cover
     brave_enabled = lambda: False  # noqa: E731
 
 _BRAVE_ENV_FLAG = bool(os.environ.get("BRAVE_ENABLED", "").strip() == "1")
-# 官方 API 类引擎的双重门禁：基线 enabled + 环境变量 key 齐备才默认启用
-_API_KEY_GATES = {
-    "tavily": "TAVILY_API_KEY",
-    "serper": "SERPER_API_KEY",
+# 官方 API 类引擎的双重门禁：基线 enabled + 环境变量齐备才默认启用
+_ENV_GATES = {
+    "tavily": ("TAVILY_API_KEY",),
+    "serper": ("SERPER_API_KEY",),
+    "exa": ("EXA_API_KEY",),
+    "firecrawl": ("FIRECRAWL_API_KEY",),
+    "scraperapi": ("SCRAPERAPI_KEY",),
+    "hasdata": ("HASDATA_KEY",),
+    "brightdata": ("BRIGHTDATA_PROXY_USER", "BRIGHTDATA_PROXY_PASSWORD"),
 }
 
 _HTTP_TIMEOUT = 6.0
@@ -90,14 +95,17 @@ def _resolve_engines(engines_param: str | None) -> list[str]:
     else:
         names = [
             name
-            for name in ("bing", "google", "ddg", "mojeek", "bilibili", "baidu", "marginalia", "brave", "tavily", "serper")
+            for name in (
+                "bing", "google", "ddg", "mojeek", "bilibili", "baidu", "marginalia",
+                "brave", "tavily", "serper", "brightdata", "exa", "firecrawl", "scraperapi", "hasdata", "searxng",
+            )
             if conf.get(name, {}).get("enabled", name != "brave")
         ]
     # 双重门禁引擎：基线 enabled + 环境变量齐备才默认启用
     if "brave" in names and not (_BRAVE_ENV_FLAG and conf.get("brave", {}).get("enabled")):
         names.remove("brave")
-    for name, env_key in _API_KEY_GATES.items():
-        if name in names and not os.environ.get(env_key, "").strip():
+    for name, env_keys in _ENV_GATES.items():
+        if name in names and not all(os.environ.get(k, "").strip() for k in env_keys):
             names.remove(name)
     return names
 
@@ -188,6 +196,43 @@ def debug_cse(q: str = Query("vue3", max_length=100)) -> JSONResponse:
     if full:
         data = cse._parse_payload(full)
         parsed = cse._extract_results(data, [])[:3] if data else None
+    return JSONResponse(
+        {"raw": {k: v for k, v in raw.items() if k != "body_full"}, "parsed_sample": parsed},
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.get("/api/debug/raw")
+def debug_raw(engine: str = Query(...), q: str = Query("test", max_length=100)) -> JSONResponse:
+    """通用原始响应转储：仅支持实现了 fetch_raw 的引擎（brightdata/cse）。"""
+    import importlib
+
+    module_map = {"brightdata": "search_engines.brightdata", "cse": "search_engines.cse"}
+    mod_path = module_map.get(engine)
+    if not mod_path:
+        return JSONResponse({"error": f"engine {engine} 无 fetch_raw"}, headers={"Cache-Control": "no-store"})
+    mod = importlib.import_module(mod_path)
+    if not hasattr(mod, "fetch_raw"):
+        return JSONResponse({"error": "module missing fetch_raw"}, headers={"Cache-Control": "no-store"})
+    try:
+        raw = mod.fetch_raw(q.strip(), lang="zh" if engine == "brightdata" else "en", page=1, timeout=10.0)
+    except Exception as exc:
+        return JSONResponse({"fetch_error": f"{type(exc).__name__}: {str(exc)[:200]}"}, headers={"Cache-Control": "no-store"})
+    parsed = None
+    full = raw.get("body_full") or raw.get("body_head") or ""
+    try:
+        if hasattr(mod, "_parse_payload"):
+            data = mod._parse_payload(full)
+            if data:
+                parsed = mod._extract_results(data, [])[:3]
+        elif hasattr(mod, "_extract_list") and isinstance(raw.get("body_head"), str):
+            import json as _json
+
+            data = _json.loads(full) if full.strip().startswith("{") else None
+            if data:
+                parsed = mod._extract_list(data)[:3]
+    except Exception:
+        parsed = None
     return JSONResponse(
         {"raw": {k: v for k, v in raw.items() if k != "body_full"}, "parsed_sample": parsed},
         headers={"Cache-Control": "no-store"},
