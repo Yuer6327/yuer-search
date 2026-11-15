@@ -123,7 +123,7 @@ curl -sI "https://s.yuer6327.top/api/search?q=test" | grep -iE "cache-control|x-
 | `BRIGHTDATA_API_TOKEN`（+ 可选 `BRIGHTDATA_ZONE`，默认 `serp`） | [brightdata.com](https://brightdata.com)（SERP API：控制台 Settings 生成账户 API Token） | **5000 credits/月**，官方明示不绑卡（注册或有 KYC 摩擦） | BrightData(百度) | **免费方案里唯一官方级百度结果**；调用 `api.brightdata.com/request`，zone 建议经 SERP API 产品页激活 |
 | `SCRAPERAPI_KEY` | [scraperapi.com](https://scraperapi.com) | 1000 credits/月 | ScraperAPI(百度) | 作为百度 tn=json 的传输通道（代理过验证码） |
 | `HASDATA_KEY` | [hasdata.com](https://hasdata.com) | 1000 credits/月 | HasData(百度) | 同上，第二个百度传输通道 |
-| `SEARXNG_INSTANCES` | —（可选） | — | SearXNG | 逗号分隔的实例清单；不填用内置默认 8 个，熔断轮换自动跳过坏实例 |
+| `SEARXNG_INSTANCES` | —（可选） | — | SearXNG | 逗号分隔的实例清单；不填用内置默认 8 个，熔断轮换自动跳过坏实例。⚠️ **2026-11-15 全量实测：searx.space 官方清单 83 个公共实例从数据中心出口 0 个开放 JSON**（41 限速 / 12 回 HTML / 12 不可达 / 9 显式 403 / 其余 404/418/502）——白嫖公共实例路线已证伪；本引擎保留作探针与自建 SearXNG（如 Koyeb）的接入点，`/api/debug/searxng?instances=...` 可随时复测 |
 | `BRAVE_ENABLED` | —（已有） | — | Brave | 已设 `1`（引擎本身被挑战页拦，保留观察） |
 | `GOOGLE_CSE_CX` | —（已配置） | — | Google 模式 | 已生效 |
 
