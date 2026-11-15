@@ -65,7 +65,7 @@ def fetch_raw(
     page: int = 1,
     timeout: float = 15.0,
     target: str = "baidu",
-    data_format: str | None = "parsed_light",
+    data_format: str | None = None,
 ) -> dict:
     """诊断转储：/api/debug/raw?engine=brightdata&target=google|baidu&df=parsed_light|none。"""
     token = os.environ.get(_TOKEN_ENV, "").strip()
@@ -121,7 +121,7 @@ def search(
     target = f"https://www.baidu.com/s?wd={quote(query)}&rn=10&pn={(page - 1) * 10}"
     resp = http_post_json(
         _ENDPOINT,
-        {"zone": zone, "url": target_url, "format": "json"},
+        {"zone": zone, "url": target, "format": "json"},
         headers={"Authorization": f"Bearer {token}"},
         timeout=timeout,
     )
