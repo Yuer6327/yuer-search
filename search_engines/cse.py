@@ -7,7 +7,9 @@
 风险与护栏：
 - element/v1 是未公开端点，返回格式可能随 Google 改版漂移 → 解析失败自动降级，不影响其他引擎；
 - 与 Bing 同样适用相关性护栏（零词元重叠即判投毒/异常，丢弃并附样本）；
-- cx 从环境变量 GOOGLE_CSE_CX（兼容 VITE_GOOGLE_CSE_CX）读取，未配置则跳过。
+- cx 从环境变量 GOOGLE_CSE_CX（兼容 VITE_GOOGLE_CSE_CX）读取，未配置则跳过；
+- 换出口：Google 对云 IP（Vercel）定向丢弃 element/v1 → 配置 GOOGLE_CSE_PROXY_URL 走自建反代
+  （workers/cse-proxy.js，Cloudflare Worker，路径镜像协议），未配置则直连。
 """
 from __future__ import annotations
 
@@ -22,7 +24,9 @@ from .util import EngineError, apply_pushdown, domain_of, host_matches
 from .util import relevance_tokens as _tokenize  # noqa: F401  与 bing 同款词元
 
 _CX_ENVS = ("GOOGLE_CSE_CX", "VITE_GOOGLE_CSE_CX")
-_ENDPOINT = "https://cse.google.com/cse/element/v1"
+_UPSTREAM = "https://cse.google.com"
+_ENDPOINT_PATH = "/cse/element/v1"
+_PROXY_ENV = "GOOGLE_CSE_PROXY_URL"
 _MAX_RESULTS = 12
 
 
@@ -38,12 +42,26 @@ def is_enabled() -> bool:
     return bool(get_cx())
 
 
-def fetch_raw(query: str, *, lang: str = "en", page: int = 1, timeout: float = 6.0) -> dict:
-    """诊断矩阵：多变体探测 element/v1 在服务器出口的可用性与响应格式。"""
+def get_proxy() -> str:
+    """自建反代基地址（workers/cse-proxy.js）：换出口 IP 绕开 Google 对云 IP 的定向丢弃。"""
+    return os.environ.get(_PROXY_ENV, "").strip().rstrip("/")
+
+
+def _base() -> str:
+    """请求基地址：配置反代时走路径镜像（{proxy}/cse/element/v1 → 上游同路径），否则直连。"""
+    return get_proxy() or _UPSTREAM
+
+
+def fetch_raw(query: str, *, lang: str = "en", page: int = 1, timeout: float = 6.0, **_extra) -> dict:
+    """诊断矩阵：多变体探测 element/v1 在当前出口的可用性与响应格式。
+
+    **_extra 兼容 /api/debug/raw 透传的 brightdata 专用参数（target/fmt/brd_json 等）。
+    """
     cx = get_cx()
     if not cx:
         return {"error": "GOOGLE_CSE_CX 未设置"}
     start = (page - 1) * 10 + 1
+    base = _base()
     base_params = {
         "cx": cx,
         "q": query,
@@ -53,21 +71,21 @@ def fetch_raw(query: str, *, lang: str = "en", page: int = 1, timeout: float = 6
         "safe": "active",
     }
 
-    out: dict = {"variants": []}
+    out: dict = {"egress": f"proxy={get_proxy()}" if get_proxy() else "direct", "variants": []}
     session = http_session()
-    # 预热：访问 CSE 宿主页拿 Cookie
+    # 预热：访问 CSE 宿主页拿 Cookie（经反代时 Cookie 由代理透传，流程不变）
     try:
-        r0 = session.get(f"https://cse.google.com/cse?cx={cx}", timeout=5.0)
+        r0 = session.get(f"{base}/cse?cx={cx}", timeout=5.0)
         out["warmup"] = {"status": r0.status_code, "bytes": len(r0.text)}
     except Exception as exc:
         out["warmup"] = {"error": f"{type(exc).__name__}: {str(exc)[:120]}"}
 
     variants = {
-        "element_full": (f"{_ENDPOINT}", {**base_params, "cseclient": "host"}),
-        "element_minimal": (f"{_ENDPOINT}", {"cx": cx, "q": query}),
-        "element_jsonp": (f"{_ENDPOINT}", {**base_params, "callback": "google.search.cse.api0.render"}),
-        "element_v2": (f"https://cse.google.com/cse/element/v2", {**base_params, "cseclient": "host"}),
-        "element_gapis": (f"https://cse.googleapis.com/cse/element/v1", {**base_params, "cseclient": "host"}),
+        "element_full": (f"{base}{_ENDPOINT_PATH}", {**base_params, "cseclient": "host"}),
+        "element_minimal": (f"{base}{_ENDPOINT_PATH}", {"cx": cx, "q": query}),
+        "element_jsonp": (f"{base}{_ENDPOINT_PATH}", {**base_params, "callback": "google.search.cse.api0.render"}),
+        "element_v2": (f"{base}/cse/element/v2", {**base_params, "cseclient": "host"}),
+        "element_gapis_direct": ("https://cse.googleapis.com/cse/element/v1", {**base_params, "cseclient": "host"}),
         "public_page": (f"https://cse.google.com/cse?cx={cx}&q={query}", {}),
     }
     for name, (url, params) in variants.items():
@@ -177,12 +195,13 @@ def search(
         "cseclient": "host",
     }
     session = http_session()
+    base = _base()
     try:
-        session.get(f"https://cse.google.com/cse?cx={cx}", timeout=4.0)
+        session.get(f"{base}/cse?cx={cx}", timeout=4.0)
     except Exception:
         pass  # 预热失败不阻塞主流程
     resp = session.get(
-        _ENDPOINT,
+        f"{base}{_ENDPOINT_PATH}",
         params=params,
         timeout=timeout,
         headers={"Referer": f"https://cse.google.com/cse?cx={cx}"},
@@ -198,7 +217,7 @@ def search(
             "status": "degraded",
             "latency_ms": int((time.perf_counter() - started) * 1000),
             "results": [],
-            "note": "CSE 端点响应格式无法解析（可能 Google 改版）",
+            "note": f"CSE 端点响应格式无法解析（出口：{'反代' if get_proxy() else '直连'}；可能 Google 改版）",
             "discarded_sample": [resp.text[:120]],
         }
 

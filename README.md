@@ -120,7 +120,7 @@ curl -sI "https://s.yuer6327.top/api/search?q=test" | grep -iE "cache-control|x-
 
 | 环境变量 | 服务 / 注册地 | 免费额度 | 引擎 | 说明 |
 |---|---|---|---|---|
-| —（无需） | — | — | Bing / B站 / SearXNG / Marginalia | 开箱即用，零配置 |
+| —（无需） | — | — | Bing / B站 / Marginalia | 开箱即用，零配置（SearXNG 默认关闭置灰，见下行） |
 | `TAVILY_API_KEY` | [tavily.com](https://tavily.com) | **1000 credits/月**，每月重置 | Tavily | 官方明示不绑卡；长期稳定兜底源 |
 | `SERPER_API_KEY` | [serper.dev](https://serper.dev) | **2500 次**（一次性） | Serper(Google) | 官方明示不绑卡；Google 中文质量基准 |
 | `EXA_API_KEY` | [exa.ai](https://exa.ai) | $10/月（每月重置）≈2500 次 | Exa | 官方文档不绑卡；语义搜索，无字面相关性护栏 |
@@ -128,7 +128,7 @@ curl -sI "https://s.yuer6327.top/api/search?q=test" | grep -iE "cache-control|x-
 | `BRIGHTDATA_API_TOKEN`（+ 可选 `BRIGHTDATA_ZONE`，默认 `serp`） | [brightdata.com](https://brightdata.com)（SERP API：控制台 Settings 生成账户 API Token） | **5000 credits/月**，官方明示不绑卡（注册或有 KYC 摩擦） | BrightData(百度) | **免费方案里唯一官方级百度结果**；调用 `api.brightdata.com/request`，zone 建议经 SERP API 产品页激活 |
 | `SCRAPERAPI_KEY` | [scraperapi.com](https://scraperapi.com) | 1000 credits/月 | ScraperAPI(百度) | 作为百度 tn=json 的传输通道（代理过验证码） |
 | `HASDATA_KEY` | [hasdata.com](https://hasdata.com) | 1000 credits/月 | HasData(百度) | 同上，第二个百度传输通道 |
-| `SEARXNG_INSTANCES` | —（可选） | — | SearXNG | 逗号分隔的实例清单；不填用内置默认 8 个，熔断轮换自动跳过坏实例。⚠️ **2026-11-15 全量实测：searx.space 官方清单 83 个公共实例从数据中心出口 0 个开放 JSON**（41 限速 / 12 回 HTML / 12 不可达 / 9 显式 403 / 其余 404/418/502）——白嫖公共实例路线已证伪；本引擎保留作探针与自建 SearXNG（如 Koyeb）的接入点，`/api/debug/searxng?instances=...` 可随时复测 |
+| `SEARXNG_INSTANCES` | —（可选） | — | SearXNG | 引擎**默认关闭置灰**；逗号分隔的实例清单，不填用内置默认 8 个，熔断轮换自动跳过坏实例。⚠️ **2026-11-15 全量实测：searx.space 官方清单 83 个公共实例从数据中心出口 0 个开放 JSON**（41 限速 / 12 回 HTML / 12 不可达 / 9 显式 403 / 其余 404/418/502）——白嫖公共实例路线已证伪；本引擎保留作探针与自建 SearXNG（如 Koyeb）的接入点，部署自建实例后设 `SEARXNG_INSTANCES` 重开，`/api/debug/searxng?instances=...` 可随时复测 |
 | `BRAVE_ENABLED` | —（已有） | — | Brave | 已设 `1`（引擎本身被挑战页拦，保留观察） |
 | `GOOGLE_CSE_CX` | —（已配置） | — | Google 模式 | 已生效 |
 
@@ -138,9 +138,12 @@ curl -sI "https://s.yuer6327.top/api/search?q=test" | grep -iE "cache-control|x-
 > "This feature is being deprecated and can no longer be enabled"，与 JSON API 停服同一轮产品收缩）。
 > 因此 Google 模式的形态是「**精选站点池内的 Google 质量搜索**」（上限 50 个域名），而非全网搜索。
 >
-> ❌ **服务端中继 Google 已实测不可行**（Google 对云 IP 定向丢弃 element/v1 端点：预热/Cookie/Referer/
-> 参数变体全部黑洞，对照路径 404 秒回，证据见 `/api/debug/cse`）。`google` 引擎（search_engines/cse.py）
-> 默认关闭保留代码，换出口 IP（自建反代）后可重新打开；大陆直连用户请使用聚合模式。
+> ❌ **服务端中继 Google 从 Vercel 直连已实测不可行**（Google 对云 IP 定向丢弃 element/v1 端点：预热/Cookie/
+> Referer/参数变体全部黑洞，对照路径 404 秒回，证据见 `/api/debug/cse`）。`google` 引擎默认关闭置灰。
+> ✅ **自建反代换出口已支持**：部署 [workers/cse-proxy.js](workers/cse-proxy.js)（Cloudflare Worker，路径
+> 镜像、仅放行 /cse* 路径）→ Vercel 设 `GOOGLE_CSE_PROXY_URL` → `/api/debug/cse` 验证出 200+结果后
+> 再打开 `baseline.json` 的 `google` 引擎（见下方部署步骤）。⚠️ Cloudflare 边缘出口是否同样被 Google
+> 丢弃需实测见分晓；若仍被黑洞，免费出口里无解（只剩住宅 IP 一条路：家宽机或住宅代理）。
 
 1. 用你的 Google 账号在 [programmablesearchengine.google.com](https://programmablesearchengine.google.com) 免费创建搜索引擎：
    - 创建表单的 "Select sites or pages to search" 随便填一个占位（如 `www.google.com/*`），它不会生效；
@@ -155,6 +158,23 @@ curl -sI "https://s.yuer6327.top/api/search?q=test" | grep -iE "cache-control|x-
    `cse.google.com`，大陆直连用户进入 Google 模式时会看到降级提示并一键切回聚合模式；
    免费版 embed 的广告位由前端剔除（`googleMode.ts` 的 postProcess）。
    测试引擎本身可用公开 URL `https://cse.google.com/cse?cx=<你的cx>`（需能直连 Google）。
+
+### 服务端中继（自建反代）部署
+
+`google` 引擎与浏览器直连的 Google 模式互不相干：反代只为服务端聚合管线提供 Google 结果
+（可加权、可被用户开关）。`workers/cse-proxy.js` 是路径镜像透明反代（/cse* → cse.google.com/cse*，
+预热 Cookie 经 Set-Cookie 透传照常生效）：
+
+1. Cloudflare Dashboard → Workers & Pages → Create Worker → 命名（如 `cse-proxy`）→
+   粘贴 [workers/cse-proxy.js](workers/cse-proxy.js) 全文 → Deploy（或 `npx wrangler deploy`）；
+2. Vercel 环境变量加 `GOOGLE_CSE_PROXY_URL=https://cse-proxy.<你的子域>.workers.dev` → Redeploy；
+3. 验证：`curl "https://s.yuer6327.top/api/debug/cse?q=vue3"`，响应 `egress` 字段应显示反代地址，
+   `element_full` 变体返回 200 且 `has_result_links` 为 true；
+4. 打开 `config/baseline.json` 的 `google` 引擎 → 提交部署 → 聚合模式状态条出现 Google。
+
+注意：`*.workers.dev` 在大陆被墙，但本反代只被 Vercel 函数调用（海外 → 海外），与国内网络无关；
+若将来想让浏览器直连的 Google 模式也走反代（大陆用户免梯用 Google 模式），需在 CF 给自有域名
+加 Workers 路由，代码无需改动。
 
 ## 自定义
 
@@ -194,7 +214,7 @@ def search(query, *, lang, page, baseline_block, timeout, deadline=None) -> dict
 | Serper(Google) | 官方 API | 2500 次一次性额度 | 环境变量 SERPER_API_KEY 配置后自动启用；结果带逐条相关性校验 |
 | DuckDuckGo | HTML 抓取 | **已实锤硬封锁**（假 202/验证码/TCP 封锁，预热无效） | 保留代码与机遇性重试；不指望 |
 | Brave | HTML 抓取 | 挑战页（防护不止 TLS 指纹） | env 开关保留；遇挑战页自动放弃 |
-| Google CSE 中继 | element/v1 | **Google 对云 IP 定向黑洞该端点**（变体矩阵实测） | 默认关闭；浏览器直连的 Google 模式不受影响 |
+| Google CSE 中继 | element/v1 | **Google 对云 IP 定向黑洞该端点**（变体矩阵实测） | 默认关闭；自建反代（`workers/cse-proxy.js` + `GOOGLE_CSE_PROXY_URL`）换出口后可重开；浏览器直连的 Google 模式不受影响 |
 | Mojeek | HTML 抓取 | **2026-11 实测已上 JS challenge** | 默认关闭，代码保留 |
 | 百度 tn=json | JSON 接口 | **wappass 验证码**（无 Cookie 连住宅 IP 都触发，需完整 Cookie 指纹生成） | 默认关闭；替代：Bright Data 免费层（5000/月，支持百度 SERP） |
 

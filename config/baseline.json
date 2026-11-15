@@ -3,7 +3,7 @@
   "comment": "全局基线（唯一来源）：前端打包引入 + Python 函数运行时读取。domains 命中规则：host 等于该值，或是它的子域名（*.example.com 覆盖 example.com）。用户个人设置永远覆盖这里的同名规则。",
   "engines": {
     "bing": { "weight": 1.15, "enabled": true, "comment": "Bing 网页抓取 mkt=zh-CN，中文结果主力（带相关性护栏）" },
-    "google": { "weight": 1.2, "enabled": false, "comment": "Google CSE 服务端中继：已实测 Google 对云 IP 定向丢弃 element/v1 端点（预热/Cookie/参数变体全试过，见 /api/debug/cse），默认关闭。Google 模式（浏览器直连 embed）对能直连 Google 的用户照常可用；换出口 IP（自建反代）后可重新打开" },
+    "google": { "weight": 1.2, "enabled": false, "comment": "Google CSE 服务端中继：已实测 Google 对云 IP 定向丢弃 element/v1 端点（预热/Cookie/参数变体全试过，见 /api/debug/cse）。已支持自建反代换出口：部署 workers/cse-proxy.js（Cloudflare Worker，路径镜像）后设 GOOGLE_CSE_PROXY_URL，经 /api/debug/cse 验证出 200+结果再打开本引擎。Google 模式（浏览器直连 embed）对能直连 Google 的用户照常可用" },
     "ddg": { "weight": 1.0, "enabled": true, "comment": "DuckDuckGo html/lite 抓取，Bing 背后索引，英文与通用查询主力" },
     "mojeek": { "weight": 0.5, "enabled": false, "comment": "Mojeek：2026-11 实测已上 JS challenge（非浏览器客户端全拦），默认关闭。复活路径：无头浏览器/反挑战代理，或等其放开" },
     "bilibili": { "weight": 0.6, "enabled": true, "comment": "B 站公开搜索接口（伪造 buvid3，未登录可搜，2026-11 实测可用）：中文/视频内容增量，英文查询自动跳过" },
@@ -17,7 +17,7 @@
     "firecrawl": { "weight": 0.6, "enabled": true, "comment": "Firecrawl 搜索：免费 1000 credits/月（约500次搜索）不绑卡。门禁：FIRECRAWL_API_KEY" },
     "scraperapi": { "weight": 0.9, "enabled": true, "comment": "ScraperAPI 作百度 tn=json 传输通道（代理过验证码）：免费 1000/月。门禁：SCRAPERAPI_KEY" },
     "hasdata": { "weight": 0.9, "enabled": true, "comment": "HasData 作百度 tn=json 传输通道：免费 1000/月。门禁：HASDATA_KEY" },
-    "searxng": { "weight": 0.9, "enabled": true, "comment": "「聚合的聚合」：公共 SearXNG 实例 JSON（熔断轮换，实例清单可用 SEARXNG_INSTANCES 环境变量覆盖）。实例由 Vercel 函数访问，与国内网络无关；需实例开着 format=json" }
+    "searxng": { "weight": 0.9, "enabled": false, "comment": "「聚合的聚合」：公共 SearXNG 实例 JSON（熔断轮换，实例清单可用 SEARXNG_INSTANCES 环境变量覆盖）。2026-11-15 全量实测 searx.space 清单 83 个公共实例从数据中心出口 0 个开放 JSON（41 限速 / 12 回 HTML / 12 不可达 / 9 显式 403 / 其余 404/418/502），白嫖公共实例路线证伪 → 默认关闭置灰；保留作探针与自建实例（如 Koyeb）接入点，部署后设 SEARXNG_INSTANCES 并经 /api/debug/searxng 复测可重开" }
   },
   "domains": {
     "block": [
