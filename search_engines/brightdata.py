@@ -1,9 +1,8 @@
-"""Bright Data SERP 引擎（新 API 模式）：POST api.brightdata.com/request 取百度 SERP JSON。
+"""Bright Data 引擎（Google 结果源）：POST api.brightdata.com/request，目标 URL 拼 brd_json=1
+触发解析输出（organic[].link/title/description）。免费层 5000 credits/月循环、无需绑卡。
 
-免费层 5000 credits/月、官方支持百度、无需绑卡。配置两个环境变量：
-- BRIGHTDATA_API_TOKEN：控制台 Settings → API token（账户级）
-- BRIGHTDATA_ZONE：（可选）Zone 名，默认 "serp"——由 SERP API 产品页激活时自动创建
-旧的代理凭据模式（BRIGHTDATA_PROXY_USER/PASSWORD）已废弃。
+曾尝试百度目标（官方产品页宣称支持百度）——实测所有参数组合均 >25s 挂起，遂转为 Google 源；
+百度中文由 Bing 主力覆盖。zone 经 get_active_zones 自动发现。
 """
 from __future__ import annotations
 
@@ -12,7 +11,7 @@ import time
 from urllib.parse import quote
 
 from .http import http_post_json
-from .util import EngineError, domain_of, host_matches, overlap_any, relevance_tokens
+from .util import EngineError, domain_of, host_matches
 
 _ENDPOINT = "https://api.brightdata.com/request"
 _TOKEN_ENV = "BRIGHTDATA_API_TOKEN"
@@ -107,12 +106,12 @@ def search(
     lang: str = "en",
     page: int = 1,
     baseline_block: list[str] | None = None,
-    timeout: float = 15.0,
+    timeout: float = 8.0,
     deadline: float | None = None,  # 契约统一；单请求引擎不使用
 ) -> dict:
+    """Google 结果源（5000/月循环额度）。目标 URL 拼 brd_json=1 触发解析输出，
+    响应为 {status_code, headers, body} 包装，body 是解析后的 SERP JSON（organic[].link）。"""
     started = time.perf_counter()
-    if lang != "zh":
-        return {"name": "brightdata", "status": "skipped", "latency_ms": 0, "results": [], "note": "百度源，英文查询自动跳过"}
     token = os.environ.get(_TOKEN_ENV, "").strip()
     if not token:
         return {
@@ -125,10 +124,12 @@ def search(
     zone = get_zone()
 
     blocked = baseline_block or []
-    target = f"https://www.baidu.com/s?wd={quote(query)}&rn=10&pn={(page - 1) * 10}"
+    target_url = f"https://www.google.com/search?q={quote(query)}&brd_json=1"
+    if page > 1:
+        target_url += f"&start={(page - 1) * 10}"
     resp = http_post_json(
         _ENDPOINT,
-        {"zone": zone, "url": target, "format": "json"},
+        {"zone": zone, "url": target_url, "format": "json"},
         headers={"Authorization": f"Bearer {token}"},
         timeout=timeout,
     )
@@ -137,52 +138,42 @@ def search(
     if resp.status_code != 200:
         raise EngineError(f"HTTP {resp.status_code}")
 
-    text = resp.text.strip()
-    data = None
-    if text.startswith("{") or text.startswith("["):
-        import json
+    import json as _json
 
-        try:
-            data = json.loads(text)
-        except Exception:
-            data = None
-    if not isinstance(data, dict):
+    wrapper = resp.json()
+    body = wrapper.get("body", "") if isinstance(wrapper, dict) else ""
+    if not body.strip().startswith("{"):
+        # 非 parsed 输出（zone 配置漂移）——降级并留样本
         return {
             "name": "brightdata",
             "status": "degraded",
             "latency_ms": int((time.perf_counter() - started) * 1000),
             "results": [],
-            "note": "响应非 SERP JSON（zone 配置或格式参数问题）",
-            "discarded_sample": [text[:120]],
+            "note": "响应体不是解析后的 SERP JSON",
+            "discarded_sample": [body[:120]],
         }
+    inner = _json.loads(body)
 
-    rows = _extract_list(data)
-    tokens = relevance_tokens(query)
     items: list[dict] = []
     seen: set[str] = set()
-    for r in rows:
-        url = r.get("url") or r.get("link") or ""  # parsed_light 形态用 link 字段
+    for r in inner.get("organic") or []:
+        url = r.get("link") or r.get("url") or ""
         if not url.startswith("http") or url in seen:
             continue
         domain = domain_of(url)
         if not domain or any(host_matches(domain, b) for b in blocked):
             continue
         seen.add(url)
-        title = str(r.get("title") or url).strip()
-        snippet = str(r.get("description") or r.get("snippet") or r.get("abstract") or "").strip()
-        items.append({"title": title, "url": url, "domain": domain, "snippet": snippet})
+        items.append(
+            {
+                "title": str(r.get("title") or url).strip(),
+                "url": url,
+                "domain": domain,
+                "snippet": str(r.get("description") or "").strip(),
+            }
+        )
         if len(items) >= _MAX_RESULTS:
             break
-
-    if items and tokens and not any(overlap_any(tokens, r["title"], r["snippet"]) for r in items):
-        return {
-            "name": "brightdata",
-            "status": "degraded",
-            "latency_ms": int((time.perf_counter() - started) * 1000),
-            "results": [],
-            "note": "相关性校验未通过，已丢弃",
-            "discarded_sample": [i["title"][:80] for i in items[:3]],
-        }
 
     return {
         "name": "brightdata",

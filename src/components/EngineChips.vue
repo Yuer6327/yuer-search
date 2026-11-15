@@ -14,7 +14,7 @@ const LABELS: Record<string, string> = {
   brave: 'Brave',
   tavily: 'Tavily',
   serper: 'Serper(Google)',
-  brightdata: 'BrightData(百度)',
+  brightdata: 'BrightData(Google)',
   exa: 'Exa',
   firecrawl: 'Firecrawl',
   scraperapi: 'ScraperAPI(百度)',

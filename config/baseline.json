@@ -12,7 +12,7 @@
     "brave": { "weight": 0.8, "enabled": true, "comment": "Brave 网页抓取：防护以 TLS 指纹为主（curl_cffi 可过）。双重门禁：此处 enabled + 服务端环境变量 BRAVE_ENABLED=1，两者齐备才启用" },
     "tavily": { "weight": 0.8, "enabled": true, "comment": "Tavily 官方 API：免费 1000 次/月不绑卡。双重门禁：此处 enabled + 环境变量 TAVILY_API_KEY" },
     "serper": { "weight": 1.1, "enabled": true, "comment": "Serper（Google SERP 代理）：注册送 2500 次一次性额度，Google 中文质量基准。双重门禁：此处 enabled + 环境变量 SERPER_API_KEY" },
-    "brightdata": { "weight": 1.0, "enabled": true, "comment": "Bright Data SERP 代理取百度结果：免费 5000/月不绑卡（Zone 类型须为 SERP）。门禁：BRIGHTDATA_PROXY_USER + BRIGHTDATA_PROXY_PASSWORD" },
+    "brightdata": { "weight": 1.05, "enabled": true, "comment": "Bright Data SERP API 取 Google 结果（brd_json=1 解析）：免费 5000/月循环额度不绑卡。门禁：BRIGHTDATA_API_TOKEN。百度目标实测挂起已放弃，中文由 Bing 主力覆盖" },
     "exa": { "weight": 0.7, "enabled": true, "comment": "Exa 神经搜索 API：每月 $10 免费 credits 不绑卡，语义匹配不做相关性护栏。门禁：EXA_API_KEY" },
     "firecrawl": { "weight": 0.6, "enabled": true, "comment": "Firecrawl 搜索：免费 1000 credits/月（约500次搜索）不绑卡。门禁：FIRECRAWL_API_KEY" },
     "scraperapi": { "weight": 0.9, "enabled": true, "comment": "ScraperAPI 作百度 tn=json 传输通道（代理过验证码）：免费 1000/月。门禁：SCRAPERAPI_KEY" },
