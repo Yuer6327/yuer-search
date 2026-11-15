@@ -68,12 +68,15 @@ def fetch_raw(
     data_format: str | None = None,
     fmt: str = "json",
     country: str | None = None,
+    brd_json: bool = False,
 ) -> dict:
     """诊断转储：/api/debug/raw?engine=brightdata&target=google|baidu&df=none&fmt=raw&country=cn。"""
     token = os.environ.get(_TOKEN_ENV, "").strip()
     zone = get_zone()
     if target == "google":
         target_url = f"https://www.google.com/search?q={quote(query)}"
+        if brd_json:
+            target_url += "&brd_json=1"
     else:
         target_url = f"https://www.baidu.com/s?wd={quote(query)}&rn=10&pn={(page - 1) * 10}"
     payload: dict = {"zone": zone, "url": target_url, "format": fmt}
