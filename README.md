@@ -70,7 +70,8 @@ gh repo create yuer-search --public --source=. --remote=origin --push   # 或 pr
 ```
 
 在 [vercel.com](https://vercel.com) → Add New → Project → 选该仓库导入，Framework 自动识别 Vite，直接 Deploy。
-Vercel 会自动构建前端（`npm run build` → `dist/`）并把 `api/index.py` 部署为 Python Function。
+Vercel 会自动构建前端（`npm run build` → `dist/`）并把 `api/` 下的入口（index/search/health，共享 `_app.py`
+应用主体）部署为 Python Function。注意：`api/` 目录按「文件名 = 路由」映射——`/api/search` 由 `api/search.py` 提供。
 
 ### 2. 函数区域切到香港（国内延迟关键）
 
