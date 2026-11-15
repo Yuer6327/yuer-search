@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "comment": "全局基线（唯一来源）：前端打包引入 + Python 函数运行时读取。domains 命中规则：host 等于该值，或是它的子域名（*.example.com 覆盖 example.com）。用户个人设置永远覆盖这里的同名规则。",
+  "engines": {
+    "ddg": { "weight": 1.0, "enabled": true, "comment": "DuckDuckGo html/lite 抓取，Bing 背后索引，英文与通用查询主力" },
+    "bing": { "weight": 1.15, "enabled": true, "comment": "Bing 网页抓取 mkt=zh-CN，中文结果主力（带相关性护栏）" },
+    "marginalia": { "weight": 0.3, "enabled": true, "comment": "Marginalia 官方免费 API，独立索引，偏非主流英文内容；中文查询自动跳过" },
+    "brave": { "weight": 0.8, "enabled": false, "comment": "Brave 网页抓取，默认关闭：反爬军备竞赛，需设环境变量 BRAVE_ENABLED=1 才启用" }
+  },
+  "domains": {
+    "block": [
+      "csdn.net",
+      "developer.aliyun.com",
+      "aliyun.com",
+      "huaweicloud.com",
+      "cloud.tencent.com",
+      "cloud.baidu.com",
+      "kknews.cc",
+      "jishuwen.com",
+      "helplib.com",
+      "codenong.com",
+      "voidcn.com",
+      "codeday.me",
+      "voidcc.com",
+      "worktile.com",
+      "cnpython.com",
+      "douyin.com",
+      "ehow.com",
+      "answers.com",
+      "experts-exchange.com",
+      "exam58.com",
+      "docin.com",
+      "doc88.com"
+    ],
+    "raise": [
+      "github.com",
+      "stackoverflow.com",
+      "developer.mozilla.org",
+      "v2ex.com",
+      "juejin.cn",
+      "cnblogs.com",
+      "segmentfault.com",
+      "docs.python.org",
+      "arxiv.org"
+    ],
+    "lower": []
+  },
+  "categories": {
+    "开发": {
+      "include": [
+        "github.com",
+        "stackoverflow.com",
+        "developer.mozilla.org",
+        "cnblogs.com",
+        "juejin.cn",
+        "segmentfault.com",
+        "v2ex.com",
+        "docs.python.org"
+      ],
+      "exclude": [],
+      "keywords": []
+    },
+    "学术": {
+      "include": [
+        "arxiv.org",
+        "github.com",
+        "stackoverflow.com",
+        "developer.mozilla.org"
+      ],
+      "exclude": [],
+      "keywords": []
+    }
+  },
+  "pushdown": {
+    "max_sites": 12,
+    "comment": "服务端把 block 域名以 -site: 形式拼进 DDG/Bing 查询，屏蔽不局限于第一页"
+  }
+}

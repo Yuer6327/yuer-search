@@ -1,0 +1,8 @@
+<script setup lang="ts">
+import SettingsPanel from './components/SettingsPanel.vue'
+</script>
+
+<template>
+  <router-view />
+  <SettingsPanel />
+</template>

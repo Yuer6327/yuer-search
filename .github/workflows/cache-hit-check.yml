@@ -1,0 +1,36 @@
+name: 缓存预热（Vercel）
+
+on:
+  push:
+    branches: [main]
+    # HIT.txt 的提交不触发本工作流，避免死循环
+    paths-ignore:
+      - 'HIT.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cache-warming-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 等待 Vercel 部署完成
+        if: github.event_name == 'push'
+        run: sleep 100
+
+      - name: 预热边缘缓存并统计命中率
+        env:
+          BASE_URL: 'https://s.yuer6327.top' # Yuer Search 自定义域名
+          # 域名前置 Cloudflare（橙云）时设为 '76.76.21.21' 直打 Vercel 边缘；
+          # 本项目用 cname-china.vercel-dns.com 直连 Vercel，留空
+          RESOLVE_IP: ''
+          TZ: Asia/Shanghai
+        run: bash .github/scripts/cache-warming.sh

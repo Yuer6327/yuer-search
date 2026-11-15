@@ -1,0 +1,29 @@
+# Node / Vite
+node_modules/
+dist/
+*.local
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Vercel
+.vercel/
+HIT.txt
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store
+
+# ZCode 工作区产物
+.zcode/

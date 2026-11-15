@@ -1,0 +1,21 @@
+{
+  "name": "yuer-search",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "自建元搜索引擎：传统结果列表 · 0 数据收集 · 0 广告 · 每用户自定义权重 · 多引擎聚合",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.0",
+    "typescript": "~5.9.0",
+    "vite": "^7.0.0"
+  }
+}
