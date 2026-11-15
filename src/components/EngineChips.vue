@@ -9,6 +9,7 @@ const LABELS: Record<string, string> = {
   ddg: 'DuckDuckGo',
   mojeek: 'Mojeek',
   bilibili: 'B 站',
+  zhihu: '知乎',
   baidu: '百度',
   marginalia: 'Marginalia',
   brave: 'Brave',

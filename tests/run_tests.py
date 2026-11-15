@@ -88,6 +88,20 @@ def main() -> int:
     assert "UP 主" in bli[0]["snippet"]
     print("[ok] bilibili JSON 解析 + UP 主元信息")
 
+    # ---------- 知乎 global_search 解析（2026-11-15 接入） ----------
+    from search_engines import zhihu
+
+    zh = _json.loads((FIX / "zhihu.json").read_text(encoding="utf-8"))
+    zhi = zhihu._parse(zh, blocked=["csdn.net"])
+    assert len(zhi) == 2, f"zhihu 期望 2 条（csdn 被基线过滤），实际 {len(zhi)}"
+    assert zhi[0]["url"] == "https://www.zhihu.com/answer/1903044959663284716", zhi[0]["url"]
+    assert "utm_" not in zhi[0]["url"], "utm 溯源参数未剥离"
+    assert "<em>" not in zhi[0]["snippet"], "<em> 高亮未清洗"
+    assert "时光纪" in zhi[0]["snippet"] and "赞同 18" in zhi[0]["snippet"] and "评论 22" in zhi[0]["snippet"]
+    assert "知乎用户" not in zhi[1]["snippet"], "匿名作者不应展示"
+    assert "赞同" not in zhi[1]["snippet"], "零赞同不应展示"
+    print("[ok] zhihu global_search 解析 + utm 剥离 + 高亮清洗 + 元信息")
+
     # ---------- SearXNG / BrightData 解析（2026-11-15 第二批） ----------
     from search_engines import brightdata, searxng
 
@@ -119,6 +133,7 @@ def main() -> int:
             ("mojeek", "python asyncio tutorial", "en"),
             ("baidu", "python 教程", "zh"),
             ("bilibili", "python 教程", "zh"),
+            ("zhihu", "rave 文化", "zh"),
         ]
         for name, probe_q, probe_lang in probes:
             try:

@@ -20,6 +20,7 @@ from .searxng import search as searxng_search
 from .serper import search as serper_search, has_key as serper_has_key
 from .tavily import search as tavily_search, has_key as tavily_has_key
 from .util import EngineError, detect_lang, host_matches, normalize_domain
+from .zhihu import search as zhihu_search, has_key as zhihu_has_key
 
 REGISTRY = {
     "bing": bing_search,
@@ -38,6 +39,7 @@ REGISTRY = {
     "scraperapi": scraperapi_search,
     "hasdata": hasdata_search,
     "searxng": searxng_search,
+    "zhihu": zhihu_search,
 }
 
 __all__ = [
@@ -65,4 +67,6 @@ __all__ = [
     "searxng_search",
     "serper_search",
     "tavily_search",
+    "zhihu_search",
+    "zhihu_has_key",
 ]

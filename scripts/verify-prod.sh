@@ -47,6 +47,14 @@ esac
 echo "$s3" | grep -q '"name":"bing"' && ! echo "$s3" | grep -qE '"name":"(ddg|marginalia)"' \
   && ok "mode=bing 引擎清单仅含 bing" || bad "mode=bing 引擎清单异常"
 
+# 知乎引擎：生产需配置 ZHIHU_API_KEY，skipped 视为密钥缺失（sync 失效）
+s4=$(curl -sS -m 30 "$BASE_URL/api/search?q=rave%20%E6%96%87%E5%8C%96&engines=zhihu&_=$NONCE" 2>/dev/null)
+case "$s4" in
+  *'"status":"ok"'*) ok "知乎引擎（zhihu）→ ok" ;;
+  *'"status":"skipped"'*) bad "知乎引擎（zhihu）→ skipped（生产缺 ZHIHU_API_KEY？）" ;;
+  *) bad "知乎引擎（zhihu）→ ${s4:0:220}" ;;
+esac
+
 # SPA 路由 /search 必须经 rewrite 兜底回 index.html（浏览器搜索词 URL）
 c2=$(code_of "$BASE_URL/search?q=canary&mode=bing")
 [ "$c2" = "200" ] && ok "SPA 路由 /search → 200" || bad "SPA 路由 /search → $c2"

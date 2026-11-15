@@ -1,0 +1,58 @@
+{
+  "Code": 0,
+  "Message": "success",
+  "Data": {
+    "HasMore": false,
+    "SearchHashId": "abcdef1234567890",
+    "Items": [
+      {
+        "Title": "Rave 锐舞文化是什么？",
+        "ContentType": "Answer",
+        "ContentID": "1903044959663284716",
+        "ContentText": "首先要澄清一个常见误解：<em>Rave</em> 不只是蹦迪，它有自己的音乐脉络与社群文化。",
+        "Url": "https://www.zhihu.com/answer/1903044959663284716?utm_medium=openapi_platform&utm_source=c2f012356e63",
+        "CommentCount": 22,
+        "VoteUpCount": 18,
+        "AuthorName": "时光纪",
+        "AuthorAvatar": "https://picx.zhimg.com/50/v2-84ce3330420f9332a1d69d4cd1f10c2f_l.jpg",
+        "AuthorBadge": "",
+        "AuthorBadgeText": "",
+        "EditTime": 1748355858,
+        "CommentInfoList": [{ "Content": "长知识了" }],
+        "AuthorityLevel": "2"
+      },
+      {
+        "Title": "从 Techno 到 Rave：一份歌单指南",
+        "ContentType": "Article",
+        "ContentID": "18698154193",
+        "ContentText": "Rave 文化的起点可以追溯到 80 年代末的 Acid House 浪潮，这篇梳理了代表曲目。",
+        "Url": "https://zhuanlan.zhihu.com/p/18698154193?utm_medium=openapi_platform&utm_source=c2f012356e63",
+        "CommentCount": 0,
+        "VoteUpCount": 0,
+        "AuthorName": "知乎用户",
+        "AuthorAvatar": "",
+        "AuthorBadge": "",
+        "AuthorBadgeText": "",
+        "EditTime": 1745486539,
+        "CommentInfoList": [],
+        "AuthorityLevel": "3"
+      },
+      {
+        "Title": "Rave 文化入门：十大必去音乐节",
+        "ContentType": "",
+        "ContentID": "-1033021233263311257",
+        "ContentText": "盘点全球 Rave 音乐节清单，附交通与购票攻略。",
+        "Url": "https://www.csdn.net/blog/rave-festivals",
+        "CommentCount": 3,
+        "VoteUpCount": 5,
+        "AuthorName": "转载robot",
+        "AuthorAvatar": "",
+        "AuthorBadge": "",
+        "AuthorBadgeText": "",
+        "EditTime": 1742822400,
+        "CommentInfoList": [],
+        "AuthorityLevel": "1"
+      }
+    ]
+  }
+}

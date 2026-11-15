@@ -57,9 +57,10 @@ _ENV_GATES = {
     "scraperapi": ("SCRAPERAPI_KEY",),
     "hasdata": ("HASDATA_KEY",),
     "brightdata": ("BRIGHTDATA_API_TOKEN",),
+    "zhihu": ("ZHIHU_API_KEY",),
 }
 _ENGINE_ORDER = (
-    "bing", "google", "ddg", "mojeek", "bilibili", "baidu", "marginalia",
+    "bing", "google", "ddg", "mojeek", "bilibili", "zhihu", "baidu", "marginalia",
     "brave", "tavily", "serper", "brightdata", "exa", "firecrawl",
     "scraperapi", "hasdata", "searxng",
 )

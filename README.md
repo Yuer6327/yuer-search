@@ -127,6 +127,7 @@ curl -sI "https://s.yuer6327.top/api/search?q=test" | grep -iE "cache-control|x-
 | `FIRECRAWL_API_KEY` | [firecrawl.dev](https://firecrawl.dev) | 1000 credits/月 ≈500 次搜索 | Firecrawl | 搜索+正文抓取一体 |
 | `BRIGHTDATA_API_TOKEN`（+ 可选 `BRIGHTDATA_ZONE`，默认 `serp`） | [brightdata.com](https://brightdata.com)（SERP API：控制台 Settings 生成账户 API Token） | **5000 credits/月**，官方明示不绑卡（注册或有 KYC 摩擦） | BrightData(百度) | **免费方案里唯一官方级百度结果**；调用 `api.brightdata.com/request`，zone 建议经 SERP API 产品页激活 |
 | `SCRAPERAPI_KEY` | [scraperapi.com](https://scraperapi.com) | 1000 credits/月 | ScraperAPI(百度) | 作为百度 tn=json 的传输通道（代理过验证码） |
+| `ZHIHU_API_KEY` | [developer.zhihu.com](https://developer.zhihu.com)（开放平台个人中心获取 Access Secret） | 额度/计费以控制台为准 | 知乎(global_search) | 官方 API，Bearer + 秒级时间戳鉴权；知乎站内问答/文章 + 全网结果，中文内容增量（2026-11-15 接入） |
 | `HASDATA_KEY` | [hasdata.com](https://hasdata.com) | 1000 credits/月 | HasData(百度) | 同上，第二个百度传输通道 |
 | `SEARXNG_INSTANCES` | —（可选） | — | SearXNG | 引擎**默认关闭置灰**；逗号分隔的实例清单，不填用内置默认 8 个，熔断轮换自动跳过坏实例。⚠️ **2026-11-15 全量实测：searx.space 官方清单 83 个公共实例从数据中心出口 0 个开放 JSON**（41 限速 / 12 回 HTML / 12 不可达 / 9 显式 403 / 其余 404/418/502）——白嫖公共实例路线已证伪；本引擎保留作探针与自建 SearXNG（如 Koyeb）的接入点，部署自建实例后设 `SEARXNG_INSTANCES` 重开，`/api/debug/searxng?instances=...` 可随时复测 |
 | `BRAVE_ENABLED` | —（已有） | — | Brave | 已设 `1`（引擎本身被挑战页拦，保留观察） |
@@ -207,6 +208,7 @@ def search(query, *, lang, page, baseline_block, timeout, deadline=None) -> dict
 |---|---|---|---|
 | Bing | HTML 抓取 | 反爬烈度最低；风险是 class 混淆变更、zh 市场参数异常（社区有负面个例） | 相关性护栏自动丢弃静默垃圾；解析器多选择器兜底 |
 | **B 站** | 公开 JSON 接口 | -412 风控（缺 buvid3 才触发）；接口随时可能收紧 | 伪造 buvid3 + Referer（searxng 同款）；英文查询自动跳过 |
+| **知乎** | 官方开放平台 API（global_search） | 额度/计费以控制台为准；无翻页参数仅第一页；业务错误以 HTTP 200 + Code 表达（20001 鉴权 / 90001 请求失败） | 环境变量 ZHIHU_API_KEY 配置后自动启用；未配置自动跳过；utm_* 溯源参数剥离后回链；结果带逐条相关性校验 |
 | Marginalia | 官方免费 API | 限速严格、官方标记 deprecated；纯英文独立索引 | 仅作兜底源、中文查询自动跳过、失败静默降级 |
 | Tavily | 官方 API | 免费 1000 次/月；中文偏英文语料（社区口碑） | 环境变量 TAVILY_API_KEY 配置后自动启用；未配置自动跳过 |
 | Serper(Google) | 官方 API | 2500 次一次性额度 | 环境变量 SERPER_API_KEY 配置后自动启用；结果带逐条相关性校验 |
