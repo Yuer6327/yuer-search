@@ -3,7 +3,7 @@
   "comment": "全局基线（唯一来源）：前端打包引入 + Python 函数运行时读取。domains 命中规则：host 等于该值，或是它的子域名（*.example.com 覆盖 example.com）。用户个人设置永远覆盖这里的同名规则。",
   "engines": {
     "bing": { "weight": 1.15, "enabled": true, "comment": "Bing 网页抓取 mkt=zh-CN，中文结果主力（带相关性护栏）" },
-    "google": { "weight": 1.2, "enabled": false, "comment": "Google CSE 服务端中继：已实测 Google 对云 IP 定向丢弃 element/v1 端点（预热/Cookie/参数变体全试过，见 /api/debug/cse）。已支持自建反代换出口：部署 workers/cse-proxy.js（Cloudflare Worker，路径镜像）后设 GOOGLE_CSE_PROXY_URL，经 /api/debug/cse 验证出 200+结果再打开本引擎。Google 模式（浏览器直连 embed）对能直连 Google 的用户照常可用" },
+    "google": { "weight": 1.2, "enabled": false, "comment": "Google CSE 服务端中继：Google 按 IP 分类定向丢弃 element/v1。反代管线已建（GOOGLE_CSE_PROXY_URL，workers/cse-proxy.js 为参考实现）并于 2026-11-15 实测：CF Worker 出口同样被黑洞（element/v1 静默 0 字节，同 Worker 的 element/v2 404 秒回/宿主页 200 秒回证明链路正常）→ 免费 serverless 出口（Vercel/CF）全灭，需住宅 IP 出口接入同款反代后再打开本引擎。Google 模式（浏览器直连 embed）对能直连 Google 的用户照常可用" },
     "ddg": { "weight": 1.0, "enabled": true, "comment": "DuckDuckGo html/lite 抓取，Bing 背后索引，英文与通用查询主力" },
     "mojeek": { "weight": 0.5, "enabled": false, "comment": "Mojeek：2026-11 实测已上 JS challenge（非浏览器客户端全拦），默认关闭。复活路径：无头浏览器/反挑战代理，或等其放开" },
     "bilibili": { "weight": 0.6, "enabled": true, "comment": "B 站公开搜索接口（伪造 buvid3，未登录可搜，2026-11 实测可用）：中文/视频内容增量，英文查询自动跳过" },

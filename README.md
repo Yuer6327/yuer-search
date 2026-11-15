@@ -138,12 +138,12 @@ curl -sI "https://s.yuer6327.top/api/search?q=test" | grep -iE "cache-control|x-
 > "This feature is being deprecated and can no longer be enabled"，与 JSON API 停服同一轮产品收缩）。
 > 因此 Google 模式的形态是「**精选站点池内的 Google 质量搜索**」（上限 50 个域名），而非全网搜索。
 >
-> ❌ **服务端中继 Google 从 Vercel 直连已实测不可行**（Google 对云 IP 定向丢弃 element/v1 端点：预热/Cookie/
-> Referer/参数变体全部黑洞，对照路径 404 秒回，证据见 `/api/debug/cse`）。`google` 引擎默认关闭置灰。
-> ✅ **自建反代换出口已支持**：部署 [workers/cse-proxy.js](workers/cse-proxy.js)（Cloudflare Worker，路径
-> 镜像、仅放行 /cse* 路径）→ Vercel 设 `GOOGLE_CSE_PROXY_URL` → `/api/debug/cse` 验证出 200+结果后
-> 再打开 `baseline.json` 的 `google` 引擎（见下方部署步骤）。⚠️ Cloudflare 边缘出口是否同样被 Google
-> 丢弃需实测见分晓；若仍被黑洞，免费出口里无解（只剩住宅 IP 一条路：家宽机或住宅代理）。
+> ❌ **服务端中继 Google 已实测不可行（含反代，2026-11-15 两轮实测）**：Google 按 IP 分类定向丢弃
+> element/v1 端点——Vercel 直连预热/Cookie/Referer/参数变体全部黑洞（证据 `/api/debug/cse`）；
+> 自建反代换出口实测 **Cloudflare Worker 出口同样被黑洞**（element/v1 静默 0 字节，同 Worker 的
+> element/v2 404 秒回、宿主页 200 秒回，证明 Worker 与 CF→Google 链路正常，纯 IP 分类丢弃）。
+> 免费 serverless 出口（Vercel/CF）全灭；`GOOGLE_CSE_PROXY_URL` 反代管线保留，接入住宅 IP 出口
+> （家宽机/住宅代理）即可复用。大陆直连用户请使用聚合模式（Google 结果由 Serper/BrightData 双源覆盖）。
 
 1. 用你的 Google 账号在 [programmablesearchengine.google.com](https://programmablesearchengine.google.com) 免费创建搜索引擎：
    - 创建表单的 "Select sites or pages to search" 随便填一个占位（如 `www.google.com/*`），它不会生效；
@@ -159,22 +159,20 @@ curl -sI "https://s.yuer6327.top/api/search?q=test" | grep -iE "cache-control|x-
    免费版 embed 的广告位由前端剔除（`googleMode.ts` 的 postProcess）。
    测试引擎本身可用公开 URL `https://cse.google.com/cse?cx=<你的cx>`（需能直连 Google）。
 
-### 服务端中继（自建反代）部署
+### 服务端中继（自建反代）
 
-`google` 引擎与浏览器直连的 Google 模式互不相干：反代只为服务端聚合管线提供 Google 结果
-（可加权、可被用户开关）。`workers/cse-proxy.js` 是路径镜像透明反代（/cse* → cse.google.com/cse*，
-预热 Cookie 经 Set-Cookie 透传照常生效）：
+`google` 引擎与浏览器直连的 Google 模式互不相干：反代只为服务端聚合管线提供 Google 结果。
+`workers/cse-proxy.js` 是路径镜像透明反代参考实现（/cse* → cse.google.com/cse*，预热 Cookie 经
+Set-Cookie 透传照常生效，仅放行 /cse* 防开放代理滥用，带 CORS）：
 
-1. Cloudflare Dashboard → Workers & Pages → Create Worker → 命名（如 `cse-proxy`）→
-   粘贴 [workers/cse-proxy.js](workers/cse-proxy.js) 全文 → Deploy（或 `npx wrangler deploy`）；
-2. Vercel 环境变量加 `GOOGLE_CSE_PROXY_URL=https://cse-proxy.<你的子域>.workers.dev` → Redeploy；
-3. 验证：`curl "https://s.yuer6327.top/api/debug/cse?q=vue3"`，响应 `egress` 字段应显示反代地址，
-   `element_full` 变体返回 200 且 `has_result_links` 为 true；
-4. 打开 `config/baseline.json` 的 `google` 引擎 → 提交部署 → 聚合模式状态条出现 Google。
-
-注意：`*.workers.dev` 在大陆被墙，但本反代只被 Vercel 函数调用（海外 → 海外），与国内网络无关；
-若将来想让浏览器直连的 Google 模式也走反代（大陆用户免梯用 Google 模式），需在 CF 给自有域名
-加 Workers 路由，代码无需改动。
+- **管线已验证**：Worker 已部署（`cse-proxy.tom-2782587337.workers.dev`，wrangler 一行命令）、
+  Vercel 已设 `GOOGLE_CSE_PROXY_URL`、转发链路正常（element/v2 经 Worker 404 秒回证明）；
+- **但 CF Worker 出口同样被 Google 黑洞 element/v1（2026-11-15 实测）**——丢弃按 IP 分类，
+  免费 serverless 出口（Vercel/CF）无解。复活条件：把 `GOOGLE_CSE_PROXY_URL` 指向**住宅 IP 出口**
+  的同款镜像反代（家宽机自建 / 住宅代理服务），`/api/debug/cse` 验证 `element_full` 出 200+结果后，
+  打开 `config/baseline.json` 的 `google` 引擎；
+- `*.workers.dev` 在大陆被墙——本地无法直连测试属正常（生产链路 Vercel hkg1 → CF 边缘不经 GFW）；
+  若将来给浏览器直连模式复用（大陆用户免梯），需在 CF 给自有域名加 Workers 路由，代码无需改动。
 
 ## 自定义
 
@@ -214,7 +212,7 @@ def search(query, *, lang, page, baseline_block, timeout, deadline=None) -> dict
 | Serper(Google) | 官方 API | 2500 次一次性额度 | 环境变量 SERPER_API_KEY 配置后自动启用；结果带逐条相关性校验 |
 | DuckDuckGo | HTML 抓取 | **已实锤硬封锁**（假 202/验证码/TCP 封锁，预热无效） | 保留代码与机遇性重试；不指望 |
 | Brave | HTML 抓取 | 挑战页（防护不止 TLS 指纹） | env 开关保留；遇挑战页自动放弃 |
-| Google CSE 中继 | element/v1 | **Google 对云 IP 定向黑洞该端点**（变体矩阵实测） | 默认关闭；自建反代（`workers/cse-proxy.js` + `GOOGLE_CSE_PROXY_URL`）换出口后可重开；浏览器直连的 Google 模式不受影响 |
+| Google CSE 中继 | element/v1 | **Google 按 IP 分类定向黑洞该端点**（Vercel 与 CF Worker 出口两轮实测） | 默认关闭；反代管线保留（`GOOGLE_CSE_PROXY_URL`），接入住宅 IP 出口后可重开；浏览器直连的 Google 模式不受影响 |
 | Mojeek | HTML 抓取 | **2026-11 实测已上 JS challenge** | 默认关闭，代码保留 |
 | 百度 tn=json | JSON 接口 | **wappass 验证码**（无 Cookie 连住宅 IP 都触发，需完整 Cookie 指纹生成） | 默认关闭；替代：Bright Data 免费层（5000/月，支持百度 SERP） |
 
