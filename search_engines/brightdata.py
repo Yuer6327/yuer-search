@@ -39,8 +39,10 @@ def fetch_raw(query: str, *, lang: str = "zh", page: int = 1, timeout: float = 1
 
 
 def _creds() -> str:
-    user = os.environ.get(_PROXY_USER_ENV, "").strip()
-    pwd = os.environ.get(_PROXY_PASS_ENV, "").strip()
+    import urllib.parse
+
+    user = urllib.parse.quote(os.environ.get(_PROXY_USER_ENV, "").strip(), safe="")
+    pwd = urllib.parse.quote(os.environ.get(_PROXY_PASS_ENV, "").strip(), safe="")
     return f"{user}:{pwd}@brd.superproxy.io:22225"
 
 
