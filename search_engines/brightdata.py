@@ -58,17 +58,28 @@ def get_zone() -> str:
     return _zone_cache or "serp"
 
 
-def fetch_raw(query: str, *, lang: str = "zh", page: int = 1, timeout: float = 15.0, target: str = "baidu") -> dict:
-    """诊断转储：/api/debug/raw?engine=brightdata&target=google|baidu。"""
+def fetch_raw(
+    query: str,
+    *,
+    lang: str = "zh",
+    page: int = 1,
+    timeout: float = 15.0,
+    target: str = "baidu",
+    data_format: str | None = "parsed_light",
+) -> dict:
+    """诊断转储：/api/debug/raw?engine=brightdata&target=google|baidu&df=parsed_light|none。"""
     token = os.environ.get(_TOKEN_ENV, "").strip()
     zone = get_zone()
     if target == "google":
         target_url = f"https://www.google.com/search?q={quote(query)}&hl=zh-cn&gl=cn"
     else:
         target_url = f"https://www.baidu.com/s?wd={quote(query)}&rn=10&pn={(page - 1) * 10}"
+    payload: dict = {"zone": zone, "url": target_url, "format": "json"}
+    if data_format:
+        payload["data_format"] = data_format
     resp = http_post_json(
         _ENDPOINT,
-        {"zone": zone, "url": target_url, "format": "json", "data_format": "parsed_light"},
+        payload,
         headers={"Authorization": f"Bearer {token}"},
         timeout=timeout,
     )
@@ -110,7 +121,7 @@ def search(
     target = f"https://www.baidu.com/s?wd={quote(query)}&rn=10&pn={(page - 1) * 10}"
     resp = http_post_json(
         _ENDPOINT,
-        {"zone": zone, "url": target, "format": "json", "data_format": "parsed_light"},
+        {"zone": zone, "url": target_url, "format": "json"},
         headers={"Authorization": f"Bearer {token}"},
         timeout=timeout,
     )

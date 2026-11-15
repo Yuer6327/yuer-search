@@ -207,6 +207,7 @@ def debug_raw(
     engine: str = Query(...),
     q: str = Query("test", max_length=100),
     target: str = Query("baidu"),
+    df: str | None = Query(None),
 ) -> JSONResponse:
     """通用原始响应转储：仅支持实现了 fetch_raw 的引擎（brightdata/cse）。"""
     import importlib
@@ -225,6 +226,7 @@ def debug_raw(
             page=1,
             timeout=25.0,
             target=target,
+            data_format=df,
         )
     except Exception as exc:
         return JSONResponse({"fetch_error": f"{type(exc).__name__}: {str(exc)[:200]}"}, headers={"Cache-Control": "no-store"})
