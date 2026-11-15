@@ -17,7 +17,7 @@ import os
 import re
 import time
 
-from .http import http_get
+from .http import http_session
 from .util import EngineError, apply_pushdown, domain_of, host_matches
 
 _CX_ENVS = ("GOOGLE_CSE_CX", "VITE_GOOGLE_CSE_CX")
@@ -38,27 +38,60 @@ def is_enabled() -> bool:
 
 
 def fetch_raw(query: str, *, lang: str = "en", page: int = 1, timeout: float = 6.0) -> dict:
-    """原始响应转储（诊断用）：/api/debug/cse 调用。"""
+    """诊断矩阵：多变体探测 element/v1 在服务器出口的可用性与响应格式。"""
     cx = get_cx()
     if not cx:
         return {"error": "GOOGLE_CSE_CX 未设置"}
     start = (page - 1) * 10 + 1
-    params = {
+    base_params = {
         "cx": cx,
         "q": query,
         "num": "10",
         "start": str(start),
         "hl": "zh-CN" if lang == "zh" else "en",
         "safe": "active",
-        "cseclient": "host",
     }
-    resp = http_get(_ENDPOINT, params=params, timeout=timeout)
-    return {
-        "http_status": resp.status_code,
-        "url": str(resp.url),
-        "body_head": resp.text[:3000],
-        "body_full": resp.text,
+
+    out: dict = {"variants": []}
+    session = http_session()
+    # 预热：访问 CSE 宿主页拿 Cookie
+    try:
+        r0 = session.get(f"https://cse.google.com/cse?cx={cx}", timeout=5.0)
+        out["warmup"] = {"status": r0.status_code, "bytes": len(r0.text)}
+    except Exception as exc:
+        out["warmup"] = {"error": f"{type(exc).__name__}: {str(exc)[:120]}"}
+
+    variants = {
+        "element_full": (f"{_ENDPOINT}", {**base_params, "cseclient": "host"}),
+        "element_noclient": (f"{_ENDPOINT}", base_params),
+        "element_csbe": (f"{_ENDPOINT}", {**base_params, "client": "google-csbe"}),
+        "public_page": (f"https://cse.google.com/cse?cx={cx}&q={query}", {}),
     }
+    for name, (url, params) in variants.items():
+        t0 = time.perf_counter()
+        try:
+            resp = session.get(
+                url,
+                params=params or None,
+                timeout=timeout,
+                headers={"Referer": f"https://cse.google.com/cse?cx={cx}"},
+            )
+            body = resp.text
+            out["variants"].append(
+                {
+                    "name": name,
+                    "status": resp.status_code,
+                    "latency_ms": int((time.perf_counter() - t0) * 1000),
+                    "bytes": len(body),
+                    "head": body[:400],
+                    "has_result_links": bool(re.search(r'class="(?:gs_|gsc-)', body)) or "results" in body[:5000].lower(),
+                }
+            )
+        except Exception as exc:
+            out["variants"].append(
+                {"name": name, "error": f"{type(exc).__name__}: {str(exc)[:120]}", "latency_ms": int((time.perf_counter() - t0) * 1000)}
+            )
+    return out
 
 
 def _clean(text: str | None) -> str:
@@ -140,7 +173,17 @@ def search(
         "safe": "active",
         "cseclient": "host",
     }
-    resp = http_get(_ENDPOINT, params=params, timeout=timeout)
+    session = http_session()
+    try:
+        session.get(f"https://cse.google.com/cse?cx={cx}", timeout=4.0)
+    except Exception:
+        pass  # 预热失败不阻塞主流程
+    resp = session.get(
+        _ENDPOINT,
+        params=params,
+        timeout=timeout,
+        headers={"Referer": f"https://cse.google.com/cse?cx={cx}"},
+    )
     if resp.status_code != 200:
         raise EngineError(f"HTTP {resp.status_code}")
 
